@@ -19,10 +19,37 @@ export function BoxList({ boxes, pipeline }: BoxListProps) {
     return pipeline.stages[key]?.name || key;
   };
 
-  // Get the Partnership field key (custom field 1001)
-  const partnershipField = pipeline.fields?.find((f: any) => f.key === "1001");
+  // Find the Partnership field dynamically - check all custom fields in a box for reference
+  const partnershipField = pipeline.fields?.find((f: any) => 
+    f.name?.toLowerCase().includes("partnership") || 
+    f.key?.toLowerCase().includes("partnership")
+  );
+  
+  // Debug: log to understand structure
+  if (boxes.length > 0 && !partnershipField) {
+    const firstBox = boxes[0] as any;
+    console.log("Pipeline fields:", pipeline.fields);
+    console.log("First box structure:", firstBox);
+    console.log("Box keys:", Object.keys(firstBox));
+  }
+  
   const getPartnershipValue = (box: Box): string => {
-    const value = (box as any)["1001"];
+    if (!partnershipField) {
+      // Try to find it by searching box properties for known partnership names
+      const boxObj = box as any;
+      for (const key of Object.keys(boxObj)) {
+        const val = boxObj[key];
+        if (typeof val === "string" && ["Ultimate", "Platinum", "Gold", "Silver"].includes(val)) {
+          return val;
+        }
+        if (typeof val === "object" && val?.name && ["Ultimate", "Platinum", "Gold", "Silver"].includes(val.name)) {
+          return val.name;
+        }
+      }
+      return "Unassigned";
+    }
+    
+    const value = (box as any)[partnershipField.key];
     if (!value) return "Unassigned";
     if (typeof value === "object" && value.name) return value.name;
     return String(value);
