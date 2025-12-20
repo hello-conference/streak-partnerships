@@ -63,7 +63,32 @@ export async function registerRoutes(
     try {
       const { key } = req.params;
       const boxes = await streakFetch(`/pipelines/${key}/boxes`);
-      res.json(boxes);
+      
+      // Also fetch the pipeline to get field definitions for resolving custom field values
+      const pipeline = await streakFetch(`/pipelines/${key}`);
+      
+      // Find the Partnership field and its option mappings
+      const partnershipField = pipeline.fields?.find((f: any) => 
+        f.name?.toLowerCase().includes("partnership")
+      );
+      
+      // Build a mapping of field option keys to their display names
+      const fieldOptionMap: Record<string, string> = {};
+      if (partnershipField?.fieldOptions) {
+        partnershipField.fieldOptions.forEach((option: any) => {
+          fieldOptionMap[option.key] = option.name;
+        });
+      }
+      
+      // Resolve numeric field references to actual values in each box
+      const resolvedBoxes = boxes.map((box: any) => {
+        if (box.fields && box.fields["1001"] && fieldOptionMap[box.fields["1001"]]) {
+          box.fields["1001_resolved"] = fieldOptionMap[box.fields["1001"]];
+        }
+        return box;
+      });
+      
+      res.json(resolvedBoxes);
     } catch (error: any) {
       res.status(500).json({ message: "Failed to fetch boxes" });
     }
