@@ -1,5 +1,6 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { AlertCircle } from "lucide-react";
+import { Link } from "wouter";
 
 export default function NotFound() {
   return (
@@ -14,6 +15,12 @@ export default function NotFound() {
           <p className="mt-4 text-sm text-gray-600">
             Did you forget to add the page to the router?
           </p>
+
+          <div className="mt-8 flex justify-end">
+             <Link href="/" className="text-primary hover:underline">
+               Return to Home
+             </Link>
+          </div>
         </CardContent>
       </Card>
     </div>
