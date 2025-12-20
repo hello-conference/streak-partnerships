@@ -32,6 +32,7 @@ export const stageSchema = z.object({
 // Enriched pipeline with stages map for easier frontend consumption
 export const pipelineWithStagesSchema = pipelineSchema.extend({
   stages: z.record(z.string(), stageSchema).optional(),
+  fields: z.array(z.any()).optional(),
 });
 
 export const boxSchema = z.object({
@@ -41,7 +42,9 @@ export const boxSchema = z.object({
   stageKey: z.string().optional(),
   pipelineKey: z.string().optional(),
   lastUpdatedTimestamp: z.number().optional(),
-});
+  // Custom fields from Streak API (keyed by field key)
+  [z.string()]: z.any().optional(),
+}).passthrough();
 
 // API Response Types
 export type Pipeline = z.infer<typeof pipelineSchema>;

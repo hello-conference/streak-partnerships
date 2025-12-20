@@ -1,10 +1,10 @@
 import { Box, PipelineWithStages } from "@shared/schema";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { format } from "date-fns";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card } from "@/components/ui/card";
 import { motion } from "framer-motion";
-import { Calendar, UserCircle } from "lucide-react";
+import { Calendar, ChevronDown } from "lucide-react";
+import { useState } from "react";
 
 interface BoxListProps {
   boxes: Box[];
@@ -12,9 +12,20 @@ interface BoxListProps {
 }
 
 export function BoxList({ boxes, pipeline }: BoxListProps) {
+  const [expandedPartnership, setExpandedPartnership] = useState<string | null>(null);
+
   const getStageName = (key?: string) => {
     if (!key || !pipeline.stages) return "Unknown Stage";
     return pipeline.stages[key]?.name || key;
+  };
+
+  // Get the Partnership field key (custom field 1001)
+  const partnershipField = pipeline.fields?.find((f: any) => f.key === "1001");
+  const getPartnershipValue = (box: Box): string => {
+    const value = (box as any)["1001"];
+    if (!value) return "Unassigned";
+    if (typeof value === "object" && value.name) return value.name;
+    return String(value);
   };
 
   if (boxes.length === 0) {
@@ -25,49 +36,95 @@ export function BoxList({ boxes, pipeline }: BoxListProps) {
     );
   }
 
-  // Group boxes by stage if needed, but for a list view we'll just show them
-  // A real Kanban board would be complex, so we'll stick to a high-quality list view
+  // Group boxes: first by partnership, then by stage
+  const groupedData: Record<string, Record<string, Box[]>> = {};
   
+  boxes.forEach((box) => {
+    const partnership = getPartnershipValue(box);
+    const stage = getStageName(box.stageKey);
+    
+    if (!groupedData[partnership]) {
+      groupedData[partnership] = {};
+    }
+    if (!groupedData[partnership][stage]) {
+      groupedData[partnership][stage] = [];
+    }
+    groupedData[partnership][stage].push(box);
+  });
+
+  // Partnership order preference
+  const partnershipOrder = ["Ultimate", "Platinum", "Gold", "Silver", "Unassigned"];
+  const sortedPartnerships = Object.keys(groupedData).sort(
+    (a, b) => partnershipOrder.indexOf(a) - partnershipOrder.indexOf(b)
+  );
+
   return (
     <div className="space-y-4">
-      {boxes.map((box, idx) => (
-        <motion.div
-          key={box.key}
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.2, delay: idx * 0.05 }}
-        >
-          <Card className="p-4 hover:shadow-md transition-shadow duration-200 border border-border/60">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-1">
-                  <h4 className="font-semibold text-foreground truncate">{box.name}</h4>
-                  <StatusBadge status={getStageName(box.stageKey)} />
-                </div>
-                
-                {box.notes && (
-                  <p className="text-sm text-muted-foreground truncate max-w-2xl">
-                    {box.notes}
-                  </p>
-                )}
-              </div>
-
-              <div className="flex items-center gap-6 text-sm text-muted-foreground flex-shrink-0">
-                <div className="flex items-center gap-1.5">
-                  <UserCircle className="w-4 h-4" />
-                  <span>Assigned</span>
-                </div>
-                
-                {box.lastUpdatedTimestamp && (
-                  <div className="flex items-center gap-1.5">
-                    <Calendar className="w-4 h-4" />
-                    <span>{format(box.lastUpdatedTimestamp, "MMM d, yyyy")}</span>
-                  </div>
-                )}
-              </div>
+      {sortedPartnerships.map((partnership) => (
+        <div key={partnership} className="border border-border/50 rounded-lg overflow-hidden">
+          {/* Partnership Header */}
+          <button
+            onClick={() => setExpandedPartnership(
+              expandedPartnership === partnership ? null : partnership
+            )}
+            className="w-full px-4 py-3 bg-card hover:bg-card/80 border-b border-border/30 flex items-center justify-between transition-colors"
+          >
+            <div className="flex items-center gap-3">
+              <ChevronDown 
+                className={`w-4 h-4 transition-transform ${
+                  expandedPartnership === partnership ? "rotate-180" : ""
+                }`}
+              />
+              <h3 className="font-semibold text-foreground">{partnership}</h3>
+              <span className="text-sm text-muted-foreground">
+                ({Object.values(groupedData[partnership]).reduce((sum, boxes) => sum + boxes.length, 0)} items)
+              </span>
             </div>
-          </Card>
-        </motion.div>
+          </button>
+
+          {/* Stages and Boxes */}
+          {expandedPartnership === partnership && (
+            <div className="divide-y divide-border/30">
+              {Object.entries(groupedData[partnership]).map(([stage, stageBoxes]) => (
+                <div key={stage} className="p-4 bg-muted/20">
+                  <h4 className="text-sm font-medium text-muted-foreground mb-3 uppercase tracking-wide">
+                    {stage} ({stageBoxes.length})
+                  </h4>
+                  <div className="space-y-2">
+                    {stageBoxes.map((box, idx) => (
+                      <motion.div
+                        key={box.key}
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ duration: 0.2, delay: idx * 0.03 }}
+                      >
+                        <Card className="p-3 bg-background hover:shadow-sm transition-shadow">
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                            <div className="flex-1 min-w-0">
+                              <h5 className="font-medium text-foreground truncate text-sm">
+                                {box.name}
+                              </h5>
+                              {box.notes && (
+                                <p className="text-xs text-muted-foreground truncate mt-1">
+                                  {box.notes}
+                                </p>
+                              )}
+                            </div>
+                            {box.lastUpdatedTimestamp && (
+                              <div className="text-xs text-muted-foreground flex-shrink-0">
+                                {format(box.lastUpdatedTimestamp, "MMM d")}
+                              </div>
+                            )}
+                          </div>
+                        </Card>
+                      </motion.div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       ))}
     </div>
   );
