@@ -175,8 +175,7 @@ export function BoxList({ boxes, pipeline }: BoxListProps) {
                         <h4 className="text-sm font-medium text-foreground font-semibold">
                           {partnership} ({partnershipBoxes.length})
                         </h4>
-                        <div className="flex items-center gap-1 text-sm font-semibold text-primary">
-                          <DollarSign className="w-4 h-4" />
+                        <div className="text-sm font-semibold text-primary">
                           {formatCurrency(partnershipTotal)}
                         </div>
                       </div>
@@ -194,8 +193,8 @@ export function BoxList({ boxes, pipeline }: BoxListProps) {
                               <div className="flex flex-col gap-2">
                                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                                   <div className="flex-1 min-w-0">
-                                    <h5 className="font-medium text-foreground truncate text-sm">
-                                      {box.name}
+                                    <h5 className="font-medium text-foreground text-sm">
+                                      <span className="truncate inline-block">{box.name}</span> <span className="text-muted-foreground text-xs">[{getStageName(box.stageKey)}]</span>
                                     </h5>
                                     {box.notes && (
                                       <p className="text-xs text-muted-foreground truncate mt-1">
@@ -205,8 +204,7 @@ export function BoxList({ boxes, pipeline }: BoxListProps) {
                                   </div>
                                   <div className="flex items-center gap-4 flex-shrink-0">
                                     {boxPrice && (
-                                      <div className="flex items-center gap-1 text-xs font-medium text-primary">
-                                        <DollarSign className="w-3.5 h-3.5" />
+                                      <div className="text-xs font-medium text-primary">
                                         {formatCurrency(boxPrice)}
                                       </div>
                                     )}
@@ -265,8 +263,8 @@ export function BoxList({ boxes, pipeline }: BoxListProps) {
                             <div className="flex flex-col gap-2">
                               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                                 <div className="flex-1 min-w-0">
-                                  <h5 className="font-medium text-foreground truncate text-sm">
-                                    {box.name}
+                                  <h5 className="font-medium text-foreground text-sm">
+                                    <span className="truncate inline-block">{box.name}</span> <span className="text-muted-foreground text-xs">[{getStageName(box.stageKey)}]</span>
                                   </h5>
                                   {box.notes && (
                                     <p className="text-xs text-muted-foreground truncate mt-1">

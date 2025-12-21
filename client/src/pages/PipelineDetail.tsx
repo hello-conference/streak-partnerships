@@ -174,7 +174,7 @@ export default function PipelineDetail() {
 
         {/* Content */}
         <div className="mt-2">
-          <h2 className="text-lg font-semibold mb-4">3 Partnership Sections</h2>
+          <h2 className="text-lg font-semibold mb-4">Partnership Sections</h2>
           <BoxList boxes={filteredBoxes} pipeline={pipeline} />
         </div>
       </div>
