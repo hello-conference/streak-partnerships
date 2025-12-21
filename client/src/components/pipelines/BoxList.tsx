@@ -3,7 +3,7 @@ import { StatusBadge } from "@/components/ui/StatusBadge";
 import { format } from "date-fns";
 import { Card } from "@/components/ui/card";
 import { motion } from "framer-motion";
-import { Calendar, ChevronDown } from "lucide-react";
+import { Calendar, ChevronDown, Mail } from "lucide-react";
 import { useState } from "react";
 
 interface BoxListProps {
@@ -116,20 +116,41 @@ export function BoxList({ boxes, pipeline }: BoxListProps) {
                         transition={{ duration: 0.2, delay: idx * 0.03 }}
                       >
                         <Card className="p-3 bg-background hover:shadow-sm transition-shadow">
-                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                            <div className="flex-1 min-w-0">
-                              <h5 className="font-medium text-foreground truncate text-sm">
-                                {box.name}
-                              </h5>
-                              {box.notes && (
-                                <p className="text-xs text-muted-foreground truncate mt-1">
-                                  {box.notes}
-                                </p>
+                          <div className="flex flex-col gap-2">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                              <div className="flex-1 min-w-0">
+                                <h5 className="font-medium text-foreground truncate text-sm">
+                                  {box.name}
+                                </h5>
+                                {box.notes && (
+                                  <p className="text-xs text-muted-foreground truncate mt-1">
+                                    {box.notes}
+                                  </p>
+                                )}
+                              </div>
+                              {box.lastUpdatedTimestamp && (
+                                <div className="text-xs text-muted-foreground flex-shrink-0">
+                                  {format(box.lastUpdatedTimestamp, "MMM d")}
+                                </div>
                               )}
                             </div>
-                            {box.lastUpdatedTimestamp && (
-                              <div className="text-xs text-muted-foreground flex-shrink-0">
-                                {format(box.lastUpdatedTimestamp, "MMM d")}
+                            
+                            {/* Contacts/Email Addresses */}
+                            {(box as any).emailAddresses && (box as any).emailAddresses.length > 0 && (
+                              <div className="flex items-start gap-2 pt-1 border-t border-border/30">
+                                <Mail className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0 mt-0.5" />
+                                <div className="text-xs text-muted-foreground space-y-0.5 flex-1 min-w-0">
+                                  {(box as any).emailAddresses.slice(0, 2).map((email: string, idx: number) => (
+                                    <div key={idx} className="truncate">
+                                      {email}
+                                    </div>
+                                  ))}
+                                  {(box as any).emailAddresses.length > 2 && (
+                                    <div className="text-xs text-muted-foreground/70">
+                                      +{(box as any).emailAddresses.length - 2} more
+                                    </div>
+                                  )}
+                                </div>
                               </div>
                             )}
                           </div>
