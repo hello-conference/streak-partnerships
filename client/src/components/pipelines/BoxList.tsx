@@ -13,6 +13,12 @@ interface BoxListProps {
 
 export function BoxList({ boxes, pipeline }: BoxListProps) {
   const [expandedSection, setExpandedSection] = useState<number | null>(0);
+  const [expandedPartnershipLevels, setExpandedPartnershipLevels] = useState<Record<string, boolean>>({
+    "Ultimate": true,
+    "Platinum": true,
+    "Gold": true,
+    "Silver": true
+  });
 
   const getStageName = (key?: string) => {
     if (!key || !pipeline.stages) return "Unknown Stage";
@@ -184,17 +190,33 @@ export function BoxList({ boxes, pipeline }: BoxListProps) {
                       return sum + (price || 0);
                     }, 0);
                     
+                    const isPartnershipExpanded = expandedPartnershipLevels[partnership] ?? true;
+                    
                     return (
-                    <div key={partnership} className={`p-4 ${getPartnershipColor(partnership)}`}>
-                      <div className="flex items-center justify-between mb-3">
-                        <h4 className="text-sm font-medium text-foreground font-semibold">
-                          {partnership} ({partnershipBoxes.length})
-                        </h4>
+                    <div key={partnership} className={`${getPartnershipColor(partnership)}`}>
+                      <button
+                        onClick={() => setExpandedPartnershipLevels(prev => ({
+                          ...prev,
+                          [partnership]: !prev[partnership]
+                        }))}
+                        className="w-full px-4 py-3 flex items-center justify-between hover:opacity-80 transition-opacity"
+                      >
+                        <div className="flex items-center gap-3">
+                          <ChevronDown 
+                            className={`w-4 h-4 transition-transform ${
+                              isPartnershipExpanded ? "rotate-180" : ""
+                            }`}
+                          />
+                          <h4 className="text-sm font-medium text-foreground font-semibold">
+                            {partnership} ({partnershipBoxes.length})
+                          </h4>
+                        </div>
                         <div className="text-sm font-semibold text-primary">
                           {formatCurrency(partnershipTotal)}
                         </div>
-                      </div>
-                      <div className="space-y-2">
+                      </button>
+                      {isPartnershipExpanded && (
+                      <div className="space-y-2 px-4 pb-4">
                         {partnershipBoxes.map((box, idx) => {
                           const boxPrice = getPrice(box);
                           return (
@@ -260,6 +282,7 @@ export function BoxList({ boxes, pipeline }: BoxListProps) {
                         );
                         })}
                       </div>
+                      )}
                     </div>
                     );
                   })

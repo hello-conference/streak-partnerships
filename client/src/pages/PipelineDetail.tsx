@@ -19,6 +19,21 @@ export default function PipelineDetail() {
   
   const [search, setSearch] = useState("");
 
+  const getPartnershipCardColor = (partnership: string): string => {
+    switch (partnership) {
+      case "Ultimate":
+        return "bg-amber-950/20 border border-amber-600/30";
+      case "Platinum":
+        return "bg-slate-600/10 border border-slate-400/30";
+      case "Gold":
+        return "bg-yellow-600/10 border border-yellow-500/30";
+      case "Silver":
+        return "bg-gray-400/10 border border-gray-400/30";
+      default:
+        return "bg-muted/40";
+    }
+  };
+
   if (isPipelineLoading || isBoxesLoading) {
     return (
       <Shell>
@@ -138,7 +153,7 @@ export default function PipelineDetail() {
                 const stats = confirmedStats[partnership];
                 if (!stats) return null;
                 return (
-                  <Card key={partnership} className="p-3 bg-muted/40">
+                  <Card key={partnership} className={`p-3 ${getPartnershipCardColor(partnership)}`}>
                     <div className="text-xs font-medium text-muted-foreground mb-1">{partnership}</div>
                     <div className="text-lg font-bold text-foreground">{stats.count}</div>
                     <div className="text-xs text-muted-foreground">{formatShortRevenue(stats.total)} euro</div>
