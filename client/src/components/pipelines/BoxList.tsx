@@ -12,7 +12,7 @@ interface BoxListProps {
 }
 
 export function BoxList({ boxes, pipeline }: BoxListProps) {
-  const [expandedPartnership, setExpandedPartnership] = useState<string | null>(null);
+  const [expandedSection, setExpandedSection] = useState<number | null>(0);
 
   const getStageName = (key?: string) => {
     if (!key || !pipeline.stages) return "Unknown Stage";
@@ -42,7 +42,7 @@ export function BoxList({ boxes, pipeline }: BoxListProps) {
       }
     }
     
-    return "Unassigned";
+    return null;
   };
 
   if (boxes.length === 0) {
@@ -53,122 +53,225 @@ export function BoxList({ boxes, pipeline }: BoxListProps) {
     );
   }
 
-  // Group boxes: first by partnership, then by stage
-  const groupedData: Record<string, Record<string, Box[]>> = {};
-  
+  // Categorize boxes into 3 sections
+  const confirmedBoxes: Record<string, Box[]> = {};
+  const unconfirmedBoxes: Box[] = [];
+  const rejectedBoxes: Box[] = [];
+
   boxes.forEach((box) => {
     const partnership = getPartnershipValue(box);
-    const stage = getStageName(box.stageKey);
+    const stageName = getStageName(box.stageKey);
     
-    if (!groupedData[partnership]) {
-      groupedData[partnership] = {};
+    // Section 1: Confirmed partnerships (have a partnership assigned)
+    if (partnership && partnership !== null) {
+      if (!confirmedBoxes[partnership]) {
+        confirmedBoxes[partnership] = [];
+      }
+      confirmedBoxes[partnership].push(box);
     }
-    if (!groupedData[partnership][stage]) {
-      groupedData[partnership][stage] = [];
+    // Section 2: Unconfirmed leads (no partnership, stage is "New" or "Contacted / Not Decided")
+    else if (stageName === "New" || stageName === "Contacted / Not Decided") {
+      unconfirmedBoxes.push(box);
     }
-    groupedData[partnership][stage].push(box);
+    // Section 3: Rejected partnerships
+    else if (stageName === "Rejected") {
+      rejectedBoxes.push(box);
+    }
   });
 
-  // Partnership order preference
-  const partnershipOrder = ["Ultimate", "Platinum", "Gold", "Silver", "Unassigned"];
-  const sortedPartnerships = Object.keys(groupedData).sort(
-    (a, b) => partnershipOrder.indexOf(a) - partnershipOrder.indexOf(b)
-  );
+  const sections = [
+    {
+      id: 1,
+      title: "Confirmed Partnerships",
+      description: "Almost confirmed partnerships with assigned levels",
+      boxes: confirmedBoxes,
+      count: Object.values(confirmedBoxes).reduce((sum, arr) => sum + arr.length, 0),
+      isGrouped: true
+    },
+    {
+      id: 2,
+      title: "Unconfirmed Leads",
+      description: "Leads waiting for confirmation (New or Contacted / Not Decided)",
+      boxes: unconfirmedBoxes,
+      count: unconfirmedBoxes.length,
+      isGrouped: false
+    },
+    {
+      id: 3,
+      title: "Rejected Partnerships",
+      description: "Partnerships that were rejected",
+      boxes: rejectedBoxes,
+      count: rejectedBoxes.length,
+      isGrouped: false
+    }
+  ];
 
   return (
     <div className="space-y-4">
-      {sortedPartnerships.map((partnership) => (
-        <div key={partnership} className="border border-border/50 rounded-lg overflow-hidden">
-          {/* Partnership Header */}
-          <button
-            onClick={() => setExpandedPartnership(
-              expandedPartnership === partnership ? null : partnership
-            )}
-            className="w-full px-4 py-3 bg-card hover:bg-card/80 border-b border-border/30 flex items-center justify-between transition-colors"
-          >
-            <div className="flex items-center gap-3">
-              <ChevronDown 
-                className={`w-4 h-4 transition-transform ${
-                  expandedPartnership === partnership ? "rotate-180" : ""
-                }`}
-              />
-              <h3 className="font-semibold text-foreground">{partnership}</h3>
-              <span className="text-sm text-muted-foreground">
-                ({Object.values(groupedData[partnership]).reduce((sum, boxes) => sum + boxes.length, 0)} items)
-              </span>
-            </div>
-          </button>
+      {sections.map((section, idx) => {
+        const hasContent = section.isGrouped 
+          ? Object.keys(section.boxes as Record<string, Box[]>).length > 0
+          : (section.boxes as Box[]).length > 0;
 
-          {/* Stages and Boxes */}
-          {expandedPartnership === partnership && (
-            <div className="divide-y divide-border/30">
-              {Object.entries(groupedData[partnership]).map(([stage, stageBoxes]) => (
-                <div key={stage} className="p-4 bg-muted/20">
-                  <h4 className="text-sm font-medium text-muted-foreground mb-3 uppercase tracking-wide">
-                    {stage} ({stageBoxes.length})
-                  </h4>
-                  <div className="space-y-2">
-                    {stageBoxes.map((box, idx) => (
-                      <motion.div
-                        key={box.key}
-                        initial={{ opacity: 0, x: -10 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ duration: 0.2, delay: idx * 0.03 }}
-                      >
-                        <Card className="p-3 bg-background hover:shadow-sm transition-shadow">
-                          <div className="flex flex-col gap-2">
-                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                              <div className="flex-1 min-w-0">
-                                <h5 className="font-medium text-foreground truncate text-sm">
-                                  {box.name}
-                                </h5>
-                                {box.notes && (
-                                  <p className="text-xs text-muted-foreground truncate mt-1">
-                                    {box.notes}
-                                  </p>
-                                )}
-                              </div>
-                              {box.lastUpdatedTimestamp && (
-                                <div className="text-xs text-muted-foreground flex-shrink-0">
-                                  {format(box.lastUpdatedTimestamp, "MMM d")}
-                                </div>
-                              )}
-                            </div>
-                            
-                            {/* Contacts/Email Addresses - exclude techorama.be */}
-                            {(() => {
-                              const customerEmails = (box as any).emailAddresses?.filter(
-                                (email: string) => !email.toLowerCase().includes("techorama.be")
-                              ) || [];
-                              return customerEmails.length > 0 ? (
-                                <div className="flex items-start gap-2 pt-1 border-t border-border/30">
-                                  <Mail className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0 mt-0.5" />
-                                  <div className="text-xs text-muted-foreground space-y-0.5 flex-1 min-w-0">
-                                    {customerEmails.slice(0, 2).map((email: string, idx: number) => (
-                                      <div key={idx} className="truncate">
-                                        {email}
-                                      </div>
-                                    ))}
-                                    {customerEmails.length > 2 && (
-                                      <div className="text-xs text-muted-foreground/70">
-                                        +{customerEmails.length - 2} more
-                                      </div>
+        if (!hasContent) return null;
+
+        return (
+          <div key={section.id} className="border border-border/50 rounded-lg overflow-hidden">
+            {/* Section Header */}
+            <button
+              onClick={() => setExpandedSection(expandedSection === section.id ? null : section.id)}
+              className="w-full px-4 py-3 bg-card hover:bg-card/80 border-b border-border/30 flex items-center justify-between transition-colors"
+            >
+              <div className="flex items-center gap-3">
+                <ChevronDown 
+                  className={`w-4 h-4 transition-transform ${
+                    expandedSection === section.id ? "rotate-180" : ""
+                  }`}
+                />
+                <div className="text-left">
+                  <h3 className="font-semibold text-foreground">{section.title}</h3>
+                  <p className="text-xs text-muted-foreground">{section.description}</p>
+                </div>
+              </div>
+              <span className="text-sm font-medium text-muted-foreground flex-shrink-0">
+                {section.count}
+              </span>
+            </button>
+
+            {/* Section Content */}
+            {expandedSection === section.id && (
+              <div className="divide-y divide-border/30">
+                {section.isGrouped ? (
+                  // Grouped by partnership level
+                  Object.entries(section.boxes as Record<string, Box[]>).map(([partnership, partnershipBoxes]) => (
+                    <div key={partnership} className="p-4 bg-muted/20">
+                      <h4 className="text-sm font-medium text-foreground mb-3 font-semibold">
+                        {partnership} ({partnershipBoxes.length})
+                      </h4>
+                      <div className="space-y-2">
+                        {partnershipBoxes.map((box, idx) => (
+                          <motion.div
+                            key={box.key}
+                            initial={{ opacity: 0, x: -10 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ duration: 0.2, delay: idx * 0.03 }}
+                          >
+                            <Card className="p-3 bg-background hover:shadow-sm transition-shadow">
+                              <div className="flex flex-col gap-2">
+                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                                  <div className="flex-1 min-w-0">
+                                    <h5 className="font-medium text-foreground truncate text-sm">
+                                      {box.name}
+                                    </h5>
+                                    {box.notes && (
+                                      <p className="text-xs text-muted-foreground truncate mt-1">
+                                        {box.notes}
+                                      </p>
                                     )}
                                   </div>
+                                  {box.lastUpdatedTimestamp && (
+                                    <div className="text-xs text-muted-foreground flex-shrink-0">
+                                      {format(box.lastUpdatedTimestamp, "MMM d")}
+                                    </div>
+                                  )}
                                 </div>
-                              ) : null;
-                            })()}
-                          </div>
-                        </Card>
-                      </motion.div>
-                    ))}
+                                
+                                {/* Contacts/Email Addresses */}
+                                {(() => {
+                                  const customerEmails = (box as any).emailAddresses?.filter(
+                                    (email: string) => !email.toLowerCase().includes("techorama.be") && !email.toLowerCase().includes("techorama.nl")
+                                  ) || [];
+                                  return customerEmails.length > 0 ? (
+                                    <div className="flex items-start gap-2 pt-1 border-t border-border/30">
+                                      <Mail className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0 mt-0.5" />
+                                      <div className="text-xs text-muted-foreground space-y-0.5 flex-1 min-w-0">
+                                        {customerEmails.slice(0, 2).map((email: string, idx: number) => (
+                                          <div key={idx} className="truncate">
+                                            {email}
+                                          </div>
+                                        ))}
+                                        {customerEmails.length > 2 && (
+                                          <div className="text-xs text-muted-foreground/70">
+                                            +{customerEmails.length - 2} more
+                                          </div>
+                                        )}
+                                      </div>
+                                    </div>
+                                  ) : null;
+                                })()}
+                              </div>
+                            </Card>
+                          </motion.div>
+                        ))}
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  // Ungrouped boxes
+                  <div className="p-4 bg-muted/20">
+                    <div className="space-y-2">
+                      {(section.boxes as Box[]).map((box, idx) => (
+                        <motion.div
+                          key={box.key}
+                          initial={{ opacity: 0, x: -10 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ duration: 0.2, delay: idx * 0.03 }}
+                        >
+                          <Card className="p-3 bg-background hover:shadow-sm transition-shadow">
+                            <div className="flex flex-col gap-2">
+                              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                                <div className="flex-1 min-w-0">
+                                  <h5 className="font-medium text-foreground truncate text-sm">
+                                    {box.name}
+                                  </h5>
+                                  {box.notes && (
+                                    <p className="text-xs text-muted-foreground truncate mt-1">
+                                      {box.notes}
+                                    </p>
+                                  )}
+                                </div>
+                                {box.lastUpdatedTimestamp && (
+                                  <div className="text-xs text-muted-foreground flex-shrink-0">
+                                    {format(box.lastUpdatedTimestamp, "MMM d")}
+                                  </div>
+                                )}
+                              </div>
+                              
+                              {/* Contacts/Email Addresses */}
+                              {(() => {
+                                const customerEmails = (box as any).emailAddresses?.filter(
+                                  (email: string) => !email.toLowerCase().includes("techorama.be") && !email.toLowerCase().includes("techorama.nl")
+                                ) || [];
+                                return customerEmails.length > 0 ? (
+                                  <div className="flex items-start gap-2 pt-1 border-t border-border/30">
+                                    <Mail className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0 mt-0.5" />
+                                    <div className="text-xs text-muted-foreground space-y-0.5 flex-1 min-w-0">
+                                      {customerEmails.slice(0, 2).map((email: string, idx: number) => (
+                                        <div key={idx} className="truncate">
+                                          {email}
+                                        </div>
+                                      ))}
+                                      {customerEmails.length > 2 && (
+                                        <div className="text-xs text-muted-foreground/70">
+                                          +{customerEmails.length - 2} more
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                ) : null;
+                              })()}
+                            </div>
+                          </Card>
+                        </motion.div>
+                      ))}
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      ))}
+                )}
+              </div>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }
