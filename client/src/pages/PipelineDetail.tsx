@@ -43,7 +43,70 @@ export default function PipelineDetail() {
     (box.notes && box.notes.toLowerCase().includes(search.toLowerCase()))
   ) || [];
 
-  const totalValue = filteredBoxes.length; // Placeholder for actual value logic if schema had it
+  const getPartnershipValue = (box: any): string | null => {
+    if (box.fields?.["1001_resolved"]) {
+      return box.fields["1001_resolved"];
+    }
+    if (box.fields?.["1001"]) {
+      const val = box.fields["1001"];
+      if (typeof val === "string") {
+        const fieldMap: Record<string, string> = {
+          "9001": "Ultimate",
+          "9002": "Gold", 
+          "9003": "Platinum",
+          "9004": "Silver"
+        };
+        if (fieldMap[val]) return fieldMap[val];
+      }
+    }
+    return null;
+  };
+
+  const getPrice = (box: any): number | null => {
+    const priceField = box.fields?.["1003"];
+    if (priceField && typeof priceField === "object" && priceField.calculationValue) {
+      return priceField.calculationValue;
+    }
+    return null;
+  };
+
+  // Calculate confirmed partnerships stats
+  const confirmedStats: Record<string, { count: number; total: number }> = {};
+  let totalConfirmedRevenue = 0;
+
+  filteredBoxes.forEach((box: any) => {
+    const partnership = getPartnershipValue(box);
+    if (partnership) {
+      if (!confirmedStats[partnership]) {
+        confirmedStats[partnership] = { count: 0, total: 0 };
+      }
+      confirmedStats[partnership].count += 1;
+      const price = getPrice(box);
+      if (price) {
+        confirmedStats[partnership].total += price;
+        totalConfirmedRevenue += price;
+      }
+    }
+  });
+
+  const formatEuro = (value: number): string => {
+    return new Intl.NumberFormat('de-DE', {
+      style: 'currency',
+      currency: 'EUR',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0
+    }).format(value);
+  };
+
+  const formatShortRevenue = (value: number): string => {
+    if (value >= 1000000) {
+      return (value / 1000000).toFixed(0) + 'M';
+    }
+    if (value >= 1000) {
+      return (value / 1000).toFixed(0) + 'K';
+    }
+    return value.toString();
+  };
 
   return (
     <Shell>
@@ -67,23 +130,30 @@ export default function PipelineDetail() {
           </Button>
         </div>
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <Card className="p-4 bg-primary/5 border-primary/20">
-            <div className="text-sm font-medium text-muted-foreground mb-1">Total Items</div>
-            <div className="text-2xl font-bold text-primary">{boxes?.length || 0}</div>
-          </Card>
-          <Card className="p-4">
-            <div className="text-sm font-medium text-muted-foreground mb-1">Active Stages</div>
-            <div className="text-2xl font-bold">{Object.keys(pipeline.stages || {}).length}</div>
-          </Card>
-          <Card className="p-4">
-            <div className="text-sm font-medium text-muted-foreground mb-1">Last Activity</div>
-            <div className="text-xl font-bold truncate">Today</div>
-          </Card>
-        </div>
-
-        <Separator className="my-2" />
+        {/* Partnership Stats Cards */}
+        {Object.keys(confirmedStats).length > 0 && (
+          <>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+              {["Ultimate", "Platinum", "Gold", "Silver"].map((partnership) => {
+                const stats = confirmedStats[partnership];
+                if (!stats) return null;
+                return (
+                  <Card key={partnership} className="p-3 bg-muted/40">
+                    <div className="text-xs font-medium text-muted-foreground mb-1">{partnership}</div>
+                    <div className="text-lg font-bold text-foreground">{stats.count}</div>
+                    <div className="text-xs text-muted-foreground">{formatShortRevenue(stats.total)} euro</div>
+                  </Card>
+                );
+              })}
+              <Card className="p-3 bg-primary/10 border border-primary/20">
+                <div className="text-xs font-medium text-primary mb-1">Total Revenue</div>
+                <div className="text-lg font-bold text-primary">{formatShortRevenue(totalConfirmedRevenue)}</div>
+                <div className="text-xs text-primary/70">{formatEuro(totalConfirmedRevenue)}</div>
+              </Card>
+            </div>
+            <Separator className="my-4" />
+          </>
+        )}
 
         {/* Filter Bar */}
         <div className="flex flex-col sm:flex-row gap-4">
