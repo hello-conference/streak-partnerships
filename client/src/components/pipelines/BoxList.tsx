@@ -3,7 +3,7 @@ import { StatusBadge } from "@/components/ui/StatusBadge";
 import { format } from "date-fns";
 import { Card } from "@/components/ui/card";
 import { motion } from "framer-motion";
-import { Calendar, ChevronDown, Mail } from "lucide-react";
+import { Calendar, ChevronDown, Mail, DollarSign } from "lucide-react";
 import { useState } from "react";
 
 interface BoxListProps {
@@ -43,6 +43,26 @@ export function BoxList({ boxes, pipeline }: BoxListProps) {
     }
     
     return null;
+  };
+
+  const getPrice = (box: Box): number | null => {
+    const boxObj = box as any;
+    const priceField = boxObj.fields?.["1003"];
+    
+    if (priceField && typeof priceField === "object" && priceField.calculationValue) {
+      return priceField.calculationValue;
+    }
+    
+    return null;
+  };
+
+  const formatCurrency = (value: number): string => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0
+    }).format(value);
   };
 
   if (boxes.length === 0) {
@@ -143,13 +163,27 @@ export function BoxList({ boxes, pipeline }: BoxListProps) {
               <div className="divide-y divide-border/30">
                 {section.isGrouped ? (
                   // Grouped by partnership level
-                  Object.entries(section.boxes as Record<string, Box[]>).map(([partnership, partnershipBoxes]) => (
+                  Object.entries(section.boxes as Record<string, Box[]>).map(([partnership, partnershipBoxes]) => {
+                    const partnershipTotal = partnershipBoxes.reduce((sum, box) => {
+                      const price = getPrice(box);
+                      return sum + (price || 0);
+                    }, 0);
+                    
+                    return (
                     <div key={partnership} className="p-4 bg-muted/20">
-                      <h4 className="text-sm font-medium text-foreground mb-3 font-semibold">
-                        {partnership} ({partnershipBoxes.length})
-                      </h4>
+                      <div className="flex items-center justify-between mb-3">
+                        <h4 className="text-sm font-medium text-foreground font-semibold">
+                          {partnership} ({partnershipBoxes.length})
+                        </h4>
+                        <div className="flex items-center gap-1 text-sm font-semibold text-primary">
+                          <DollarSign className="w-4 h-4" />
+                          {formatCurrency(partnershipTotal)}
+                        </div>
+                      </div>
                       <div className="space-y-2">
-                        {partnershipBoxes.map((box, idx) => (
+                        {partnershipBoxes.map((box, idx) => {
+                          const boxPrice = getPrice(box);
+                          return (
                           <motion.div
                             key={box.key}
                             initial={{ opacity: 0, x: -10 }}
@@ -169,11 +203,19 @@ export function BoxList({ boxes, pipeline }: BoxListProps) {
                                       </p>
                                     )}
                                   </div>
-                                  {box.lastUpdatedTimestamp && (
-                                    <div className="text-xs text-muted-foreground flex-shrink-0">
-                                      {format(box.lastUpdatedTimestamp, "MMM d")}
-                                    </div>
-                                  )}
+                                  <div className="flex items-center gap-4 flex-shrink-0">
+                                    {boxPrice && (
+                                      <div className="flex items-center gap-1 text-xs font-medium text-primary">
+                                        <DollarSign className="w-3.5 h-3.5" />
+                                        {formatCurrency(boxPrice)}
+                                      </div>
+                                    )}
+                                    {box.lastUpdatedTimestamp && (
+                                      <div className="text-xs text-muted-foreground">
+                                        {format(box.lastUpdatedTimestamp, "MMM d")}
+                                      </div>
+                                    )}
+                                  </div>
                                 </div>
                                 
                                 {/* Contacts/Email Addresses */}
@@ -202,10 +244,12 @@ export function BoxList({ boxes, pipeline }: BoxListProps) {
                               </div>
                             </Card>
                           </motion.div>
-                        ))}
+                        );
+                        })}
                       </div>
                     </div>
-                  ))
+                    );
+                  })
                 ) : (
                   // Ungrouped boxes
                   <div className="p-4 bg-muted/20">
