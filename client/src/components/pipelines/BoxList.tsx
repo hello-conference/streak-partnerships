@@ -65,6 +65,21 @@ export function BoxList({ boxes, pipeline }: BoxListProps) {
     }).format(value);
   };
 
+  const getPartnershipColor = (partnership: string): string => {
+    switch (partnership) {
+      case "Ultimate":
+        return "bg-amber-950/20 border-l-4 border-l-amber-600";
+      case "Platinum":
+        return "bg-slate-600/10 border-l-4 border-l-slate-400";
+      case "Gold":
+        return "bg-yellow-600/10 border-l-4 border-l-yellow-500";
+      case "Silver":
+        return "bg-gray-400/10 border-l-4 border-l-gray-400";
+      default:
+        return "bg-muted/20";
+    }
+  };
+
   if (boxes.length === 0) {
     return (
       <div className="text-center py-12 bg-muted/30 rounded-xl border border-dashed border-border">
@@ -170,7 +185,7 @@ export function BoxList({ boxes, pipeline }: BoxListProps) {
                     }, 0);
                     
                     return (
-                    <div key={partnership} className="p-4 bg-muted/20">
+                    <div key={partnership} className={`p-4 ${getPartnershipColor(partnership)}`}>
                       <div className="flex items-center justify-between mb-3">
                         <h4 className="text-sm font-medium text-foreground font-semibold">
                           {partnership} ({partnershipBoxes.length})
@@ -193,8 +208,8 @@ export function BoxList({ boxes, pipeline }: BoxListProps) {
                               <div className="flex flex-col gap-2">
                                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                                   <div className="flex-1 min-w-0">
-                                    <h5 className="font-medium text-foreground text-sm">
-                                      <span className="truncate inline-block">{box.name}</span> <span className="text-muted-foreground text-xs">[{getStageName(box.stageKey)}]</span>
+                                    <h5 className="font-medium text-foreground text-sm leading-tight">
+                                      <span className="truncate inline">{box.name}</span> <span className="text-muted-foreground text-xs inline align-text-bottom">[{getStageName(box.stageKey)}]</span>
                                     </h5>
                                     {box.notes && (
                                       <p className="text-xs text-muted-foreground truncate mt-1">
@@ -263,8 +278,8 @@ export function BoxList({ boxes, pipeline }: BoxListProps) {
                             <div className="flex flex-col gap-2">
                               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                                 <div className="flex-1 min-w-0">
-                                  <h5 className="font-medium text-foreground text-sm">
-                                    <span className="truncate inline-block">{box.name}</span> <span className="text-muted-foreground text-xs">[{getStageName(box.stageKey)}]</span>
+                                  <h5 className="font-medium text-foreground text-sm leading-tight">
+                                    <span className="truncate inline">{box.name}</span> <span className="text-muted-foreground text-xs inline align-text-bottom">[{getStageName(box.stageKey)}]</span>
                                   </h5>
                                   {box.notes && (
                                     <p className="text-xs text-muted-foreground truncate mt-1">
