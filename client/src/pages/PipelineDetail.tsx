@@ -143,16 +143,6 @@ export default function PipelineDetail() {
     }).format(value);
   };
 
-  const formatShortRevenue = (value: number): string => {
-    if (value >= 1000000) {
-      return (value / 1000000).toFixed(0) + 'M';
-    }
-    if (value >= 1000) {
-      return (value / 1000).toFixed(0) + 'K';
-    }
-    return value.toString();
-  };
-
   return (
     <Shell>
       <div className="flex flex-col gap-6">
@@ -207,12 +197,12 @@ export default function PipelineDetail() {
                     
                     {/* Revenue */}
                     <div className="text-xs text-muted-foreground">
-                      <div>{formatShortRevenue(stats.total)} euro</div>
+                      <div>{formatEuro(stats.total)}</div>
                       {prevStats && (
                         <div className="text-xs text-muted-foreground/70 mt-0.5">
-                          2025: {formatShortRevenue(prevStats.total)} {revenueDiff !== 0 && (
+                          2025: {formatEuro(prevStats.total)} {revenueDiff !== 0 && (
                             <span className={revenueDiff > 0 ? 'text-green-600' : 'text-red-600'}>
-                              {revenueDiff > 0 ? '+' : ''}{formatShortRevenue(revenueDiff)}
+                              {revenueDiff > 0 ? '+' : ''}{formatEuro(revenueDiff)}
                             </span>
                           )}
                         </div>
@@ -223,17 +213,16 @@ export default function PipelineDetail() {
               })}
               <Card className="p-3 bg-primary/10 border border-primary/20">
                 <div className="text-xs font-medium text-primary mb-2">Total Revenue</div>
-                <div className="text-lg font-bold text-primary">{formatShortRevenue(totalConfirmedRevenue)}</div>
+                <div className="text-lg font-bold text-primary">{formatEuro(totalConfirmedRevenue)}</div>
                 {totalPrevYearRevenue > 0 && (
                   <div className="text-xs text-primary/70 mt-1">
-                    2025: {formatShortRevenue(totalPrevYearRevenue)} {totalConfirmedRevenue - totalPrevYearRevenue !== 0 && (
+                    2025: {formatEuro(totalPrevYearRevenue)} {totalConfirmedRevenue - totalPrevYearRevenue !== 0 && (
                       <span className={totalConfirmedRevenue - totalPrevYearRevenue > 0 ? 'text-green-600' : 'text-red-600'}>
-                        {totalConfirmedRevenue - totalPrevYearRevenue > 0 ? '+' : ''}{formatShortRevenue(Math.abs(totalConfirmedRevenue - totalPrevYearRevenue))}
+                        {totalConfirmedRevenue - totalPrevYearRevenue > 0 ? '+' : ''}{formatEuro(Math.abs(totalConfirmedRevenue - totalPrevYearRevenue))}
                       </span>
                     )}
                   </div>
                 )}
-                <div className="text-xs text-primary/70 mt-2">{formatEuro(totalConfirmedRevenue)}</div>
               </Card>
             </div>
             <Separator className="my-4" />
