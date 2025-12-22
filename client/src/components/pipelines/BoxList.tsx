@@ -9,9 +9,10 @@ import { useState } from "react";
 interface BoxListProps {
   boxes: Box[];
   pipeline: PipelineWithStages;
+  prevYearStats?: Record<string, { count: number; total: number }>;
 }
 
-export function BoxList({ boxes, pipeline }: BoxListProps) {
+export function BoxList({ boxes, pipeline, prevYearStats = {} }: BoxListProps) {
   const [expandedSection, setExpandedSection] = useState<number | null>(0);
   const [expandedPartnershipLevels, setExpandedPartnershipLevels] = useState<Record<string, boolean>>({
     "Ultimate": true,
@@ -192,6 +193,8 @@ export function BoxList({ boxes, pipeline }: BoxListProps) {
                     
                     const isPartnershipExpanded = expandedPartnershipLevels[partnership] ?? true;
                     
+                    const prevPartnershipStats = prevYearStats[partnership];
+                    
                     return (
                     <div key={partnership} className={`${getPartnershipColor(partnership)}`}>
                       <button
@@ -211,8 +214,15 @@ export function BoxList({ boxes, pipeline }: BoxListProps) {
                             {partnership} ({partnershipBoxes.length})
                           </h4>
                         </div>
-                        <div className="text-sm font-semibold text-primary">
-                          {formatCurrency(partnershipTotal)}
+                        <div className="flex flex-col items-end gap-0.5">
+                          <div className="text-sm font-semibold text-primary">
+                            {formatCurrency(partnershipTotal)}
+                          </div>
+                          {prevPartnershipStats && (
+                            <div className="text-xs text-muted-foreground/70">
+                              2025: {formatCurrency(prevPartnershipStats.total)}
+                            </div>
+                          )}
                         </div>
                       </button>
                       {isPartnershipExpanded && (
