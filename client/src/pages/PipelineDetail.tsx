@@ -1,13 +1,13 @@
 import { Shell } from "@/components/layout/Shell";
-import { usePipeline, usePipelineBoxes } from "@/hooks/use-pipelines";
+import { usePipeline, usePipelineBoxes, usePipelines } from "@/hooks/use-pipelines";
 import { useRoute } from "wouter";
 import { BoxList } from "@/components/pipelines/BoxList";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, Filter, Search, Plus } from "lucide-react";
+import { ChevronLeft, Filter, Search, Plus, TrendingUp, TrendingDown } from "lucide-react";
 import { Link } from "wouter";
 import { Input } from "@/components/ui/input";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Card } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 
@@ -16,8 +16,17 @@ export default function PipelineDetail() {
   const key = match ? params.key : null;
   const { data: pipeline, isLoading: isPipelineLoading } = usePipeline(key);
   const { data: boxes, isLoading: isBoxesLoading } = usePipelineBoxes(key);
+  const { data: allPipelines, isLoading: isPipelinesLoading } = usePipelines();
   
   const [search, setSearch] = useState("");
+
+  const prevYearPipelineKey = useMemo(() => {
+    if (!allPipelines) return null;
+    const prevYearPipeline = allPipelines.find(p => p.name === "Partners 2025 BE");
+    return prevYearPipeline?.key || null;
+  }, [allPipelines]);
+
+  const { data: prevYearBoxes } = usePipelineBoxes(prevYearPipelineKey);
 
   const getPartnershipCardColor = (partnership: string): string => {
     switch (partnership) {
@@ -34,7 +43,7 @@ export default function PipelineDetail() {
     }
   };
 
-  if (isPipelineLoading || isBoxesLoading) {
+  if (isPipelineLoading || isBoxesLoading || isPipelinesLoading) {
     return (
       <Shell>
         <LoadingSpinner />
@@ -67,8 +76,8 @@ export default function PipelineDetail() {
       if (typeof val === "string") {
         const fieldMap: Record<string, string> = {
           "9001": "Ultimate",
-          "9002": "Gold", 
-          "9003": "Platinum",
+          "9002": "Platinum", 
+          "9003": "Gold",
           "9004": "Silver"
         };
         if (fieldMap[val]) return fieldMap[val];
@@ -103,6 +112,27 @@ export default function PipelineDetail() {
       }
     }
   });
+
+  // Calculate previous year stats for comparison
+  const prevYearStats: Record<string, { count: number; total: number }> = {};
+  let totalPrevYearRevenue = 0;
+
+  if (prevYearBoxes && prevYearBoxes.length > 0) {
+    prevYearBoxes.forEach((box: any) => {
+      const partnership = getPartnershipValue(box);
+      if (partnership) {
+        if (!prevYearStats[partnership]) {
+          prevYearStats[partnership] = { count: 0, total: 0 };
+        }
+        prevYearStats[partnership].count += 1;
+        const price = getPrice(box);
+        if (price) {
+          prevYearStats[partnership].total += price;
+          totalPrevYearRevenue += price;
+        }
+      }
+    });
+  }
 
   const formatEuro = (value: number): string => {
     return new Intl.NumberFormat('de-DE', {
@@ -151,18 +181,46 @@ export default function PipelineDetail() {
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
               {["Ultimate", "Platinum", "Gold", "Silver"].map((partnership) => {
                 const stats = confirmedStats[partnership];
+                const prevStats = prevYearStats[partnership];
                 if (!stats) return null;
+
+                const countDiff = prevStats ? stats.count - prevStats.count : 0;
+                const revenueDiff = prevStats ? stats.total - prevStats.total : 0;
+
                 return (
                   <Card key={partnership} className={`p-3 ${getPartnershipCardColor(partnership)}`}>
                     <div className="text-xs font-medium text-muted-foreground mb-1">{partnership}</div>
-                    <div className="text-lg font-bold text-foreground">{stats.count}</div>
-                    <div className="text-xs text-muted-foreground">{formatShortRevenue(stats.total)} euro</div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <div className="text-lg font-bold text-foreground">{stats.count}</div>
+                      {prevStats && countDiff !== 0 && (
+                        <div className={`text-xs flex items-center gap-1 ${countDiff > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                          {countDiff > 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+                          {countDiff > 0 ? '+' : ''}{countDiff}
+                        </div>
+                      )}
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      <div>{formatShortRevenue(stats.total)} euro</div>
+                      {prevStats && revenueDiff !== 0 && (
+                        <div className={`text-xs ${revenueDiff > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                          {revenueDiff > 0 ? '+' : ''}{formatShortRevenue(revenueDiff)} euro
+                        </div>
+                      )}
+                    </div>
                   </Card>
                 );
               })}
               <Card className="p-3 bg-primary/10 border border-primary/20">
                 <div className="text-xs font-medium text-primary mb-1">Total Revenue</div>
-                <div className="text-lg font-bold text-primary">{formatShortRevenue(totalConfirmedRevenue)}</div>
+                <div className="flex items-center gap-2 mb-1">
+                  <div className="text-lg font-bold text-primary">{formatShortRevenue(totalConfirmedRevenue)}</div>
+                  {totalPrevYearRevenue > 0 && (
+                    <div className={`text-xs flex items-center gap-1 ${totalConfirmedRevenue - totalPrevYearRevenue > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      {totalConfirmedRevenue - totalPrevYearRevenue > 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+                      {totalConfirmedRevenue - totalPrevYearRevenue > 0 ? '+' : ''}{formatShortRevenue(Math.abs(totalConfirmedRevenue - totalPrevYearRevenue))}
+                    </div>
+                  )}
+                </div>
                 <div className="text-xs text-primary/70">{formatEuro(totalConfirmedRevenue)}</div>
               </Card>
             </div>

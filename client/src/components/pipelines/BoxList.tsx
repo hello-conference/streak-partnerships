@@ -40,8 +40,8 @@ export function BoxList({ boxes, pipeline }: BoxListProps) {
         // Map numeric field values to names (from Streak API)
         const fieldMap: Record<string, string> = {
           "9001": "Ultimate",
-          "9002": "Gold", 
-          "9003": "Platinum",
+          "9002": "Platinum", 
+          "9003": "Gold",
           "9004": "Silver"
         };
         if (fieldMap[val]) return fieldMap[val];
