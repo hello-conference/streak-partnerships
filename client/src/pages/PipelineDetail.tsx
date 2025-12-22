@@ -166,7 +166,7 @@ export default function PipelineDetail() {
         <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-6">
           <div>
             <h1 className="text-3xl font-bold tracking-tight text-foreground mb-2">{pipeline.name}</h1>
-            <p className="text-muted-foreground max-w-2xl">{pipeline.description || "Manage your deals and track progress."}</p>
+            <p className="text-muted-foreground max-w-2xl">Manage your deals and track progress compared to the partnerships in 2025.</p>
           </div>
           
           <Button className="shrink-0 gap-2 shadow-lg shadow-primary/25">
@@ -189,21 +189,32 @@ export default function PipelineDetail() {
 
                 return (
                   <Card key={partnership} className={`p-3 ${getPartnershipCardColor(partnership)}`}>
-                    <div className="text-xs font-medium text-muted-foreground mb-1">{partnership}</div>
-                    <div className="flex items-center gap-2 mb-1">
+                    <div className="text-xs font-medium text-muted-foreground mb-2">{partnership}</div>
+                    
+                    {/* Partner Count */}
+                    <div className="mb-2">
                       <div className="text-lg font-bold text-foreground">{stats.count}</div>
-                      {prevStats && countDiff !== 0 && (
-                        <div className={`text-xs flex items-center gap-1 ${countDiff > 0 ? 'text-green-600' : 'text-red-600'}`}>
-                          {countDiff > 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
-                          {countDiff > 0 ? '+' : ''}{countDiff}
+                      {prevStats && (
+                        <div className="text-xs text-muted-foreground/70 mt-0.5">
+                          2025: {prevStats.count} {countDiff !== 0 && (
+                            <span className={countDiff > 0 ? 'text-green-600' : 'text-red-600'}>
+                              {countDiff > 0 ? '+' : ''}{countDiff}
+                            </span>
+                          )}
                         </div>
                       )}
                     </div>
+                    
+                    {/* Revenue */}
                     <div className="text-xs text-muted-foreground">
                       <div>{formatShortRevenue(stats.total)} euro</div>
-                      {prevStats && revenueDiff !== 0 && (
-                        <div className={`text-xs ${revenueDiff > 0 ? 'text-green-600' : 'text-red-600'}`}>
-                          {revenueDiff > 0 ? '+' : ''}{formatShortRevenue(revenueDiff)} euro
+                      {prevStats && (
+                        <div className="text-xs text-muted-foreground/70 mt-0.5">
+                          2025: {formatShortRevenue(prevStats.total)} {revenueDiff !== 0 && (
+                            <span className={revenueDiff > 0 ? 'text-green-600' : 'text-red-600'}>
+                              {revenueDiff > 0 ? '+' : ''}{formatShortRevenue(revenueDiff)}
+                            </span>
+                          )}
                         </div>
                       )}
                     </div>
@@ -211,17 +222,18 @@ export default function PipelineDetail() {
                 );
               })}
               <Card className="p-3 bg-primary/10 border border-primary/20">
-                <div className="text-xs font-medium text-primary mb-1">Total Revenue</div>
-                <div className="flex items-center gap-2 mb-1">
-                  <div className="text-lg font-bold text-primary">{formatShortRevenue(totalConfirmedRevenue)}</div>
-                  {totalPrevYearRevenue > 0 && (
-                    <div className={`text-xs flex items-center gap-1 ${totalConfirmedRevenue - totalPrevYearRevenue > 0 ? 'text-green-600' : 'text-red-600'}`}>
-                      {totalConfirmedRevenue - totalPrevYearRevenue > 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
-                      {totalConfirmedRevenue - totalPrevYearRevenue > 0 ? '+' : ''}{formatShortRevenue(Math.abs(totalConfirmedRevenue - totalPrevYearRevenue))}
-                    </div>
-                  )}
-                </div>
-                <div className="text-xs text-primary/70">{formatEuro(totalConfirmedRevenue)}</div>
+                <div className="text-xs font-medium text-primary mb-2">Total Revenue</div>
+                <div className="text-lg font-bold text-primary">{formatShortRevenue(totalConfirmedRevenue)}</div>
+                {totalPrevYearRevenue > 0 && (
+                  <div className="text-xs text-primary/70 mt-1">
+                    2025: {formatShortRevenue(totalPrevYearRevenue)} {totalConfirmedRevenue - totalPrevYearRevenue !== 0 && (
+                      <span className={totalConfirmedRevenue - totalPrevYearRevenue > 0 ? 'text-green-600' : 'text-red-600'}>
+                        {totalConfirmedRevenue - totalPrevYearRevenue > 0 ? '+' : ''}{formatShortRevenue(Math.abs(totalConfirmedRevenue - totalPrevYearRevenue))}
+                      </span>
+                    )}
+                  </div>
+                )}
+                <div className="text-xs text-primary/70 mt-2">{formatEuro(totalConfirmedRevenue)}</div>
               </Card>
             </div>
             <Separator className="my-4" />
