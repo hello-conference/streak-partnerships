@@ -30,10 +30,11 @@ export function usePipeline(key: string | null) {
 }
 
 // GET /api/pipelines/:key/boxes
-export function usePipelineBoxes(key: string | null) {
+export function usePipelineBoxes(key: string | null, options?: { enabled?: boolean }) {
+  const isEnabled = options?.enabled !== undefined ? options.enabled && !!key : !!key;
   return useQuery({
     queryKey: [api.pipelines.getBoxes.path, key],
-    enabled: !!key,
+    enabled: isEnabled,
     queryFn: async () => {
       if (!key) throw new Error("Key is required");
       const url = buildUrl(api.pipelines.getBoxes.path, { key });

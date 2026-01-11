@@ -39,6 +39,18 @@ function isDomainAllowed(req: any, res: any, next: any) {
   next();
 }
 
+// Check if user can access a specific pipeline based on email domain
+// .be users can access both BE and NL pipelines
+// .nl users can only access NL pipelines
+function canAccessPipeline(email: string, pipelineKey: string): boolean {
+  const domain = email.split("@")[1]?.toLowerCase();
+  if (domain === "techorama.be") {
+    return true; // BE users can access all pipelines
+  }
+  // NL users can only access NL pipelines
+  return isNLPipeline(pipelineKey);
+}
+
 export async function registerRoutes(
   httpServer: Server,
   app: Express
@@ -92,11 +104,16 @@ export async function registerRoutes(
   }
 
   // Protected API routes - require authentication and domain check
-  app.get(api.pipelines.list.path, isAuthenticated, isDomainAllowed, async (req, res) => {
+  app.get(api.pipelines.list.path, isAuthenticated, isDomainAllowed, async (req: any, res) => {
     try {
-      // Fetch from both BE and NL APIs
+      const email = req.user?.claims?.email;
+      const domain = email?.split("@")[1]?.toLowerCase();
+      const canViewBE = domain === "techorama.be";
+      
+      // Fetch pipelines based on user permissions
+      // .be users can view both, .nl users can only view NL
       const [bePipelines, nlPipelines] = await Promise.all([
-        streakFetch('/pipelines').catch(() => []),
+        canViewBE ? streakFetch('/pipelines').catch(() => []) : Promise.resolve([]),
         streakFetchNL('/pipelines').catch(() => [])
       ]);
       
@@ -111,9 +128,16 @@ export async function registerRoutes(
     }
   });
 
-  app.get(api.pipelines.get.path, isAuthenticated, isDomainAllowed, async (req, res) => {
+  app.get(api.pipelines.get.path, isAuthenticated, isDomainAllowed, async (req: any, res) => {
     try {
       const { key } = req.params;
+      const email = req.user?.claims?.email;
+      
+      // Check pipeline access permission
+      if (!canAccessPipeline(email, key)) {
+        return res.status(403).json({ message: "Access denied: You don't have permission to view this pipeline" });
+      }
+      
       const fetcher = getStreakFetcher(key);
       const pipeline = await fetcher(`/pipelines/${key}`);
       res.json(pipeline);
@@ -122,9 +146,16 @@ export async function registerRoutes(
     }
   });
 
-  app.get(api.pipelines.getBoxes.path, isAuthenticated, isDomainAllowed, async (req, res) => {
+  app.get(api.pipelines.getBoxes.path, isAuthenticated, isDomainAllowed, async (req: any, res) => {
     try {
       const { key } = req.params;
+      const email = req.user?.claims?.email;
+      
+      // Check pipeline access permission
+      if (!canAccessPipeline(email, key)) {
+        return res.status(403).json({ message: "Access denied: You don't have permission to view this pipeline" });
+      }
+      
       const fetcher = getStreakFetcher(key);
       const boxes = await fetcher(`/pipelines/${key}/boxes`);
       
@@ -171,10 +202,33 @@ export async function registerRoutes(
     }
   });
 
-  app.get(api.boxes.get.path, isAuthenticated, isDomainAllowed, async (req, res) => {
+  app.get(api.boxes.get.path, isAuthenticated, isDomainAllowed, async (req: any, res) => {
     try {
       const { key } = req.params;
-      const box = await streakFetch(`/boxes/${key}`);
+      const email = req.user?.claims?.email;
+      
+      // Try to fetch the box from BE first, then NL if not found
+      let box = null;
+      let pipelineKey = null;
+      
+      try {
+        box = await streakFetch(`/boxes/${key}`);
+        pipelineKey = box?.pipelineKey;
+      } catch {
+        // Try NL API if BE fails
+        try {
+          box = await streakFetchNL(`/boxes/${key}`);
+          pipelineKey = box?.pipelineKey;
+        } catch {
+          return res.status(404).json({ message: "Box not found" });
+        }
+      }
+      
+      // Check pipeline access permission
+      if (pipelineKey && !canAccessPipeline(email, pipelineKey)) {
+        return res.status(403).json({ message: "Access denied: You don't have permission to view this box" });
+      }
+      
       res.json(box);
     } catch (error: any) {
       res.status(404).json({ message: "Box not found" });
@@ -182,10 +236,16 @@ export async function registerRoutes(
   });
 
   // Update a box field in Streak
-  app.post(api.boxes.updateField.path, isAuthenticated, isDomainAllowed, async (req, res) => {
+  app.post(api.boxes.updateField.path, isAuthenticated, isDomainAllowed, async (req: any, res) => {
     try {
       const { key, fieldKey } = req.params;
       const { value, pipelineKey } = req.body;
+      const email = req.user?.claims?.email;
+      
+      // Check pipeline access permission if pipelineKey is provided
+      if (pipelineKey && !canAccessPipeline(email, pipelineKey)) {
+        return res.status(403).json({ message: "Access denied: You don't have permission to modify this pipeline" });
+      }
       
       // Use the appropriate API key based on pipeline
       const isNL = pipelineKey && isNLPipeline(pipelineKey);

@@ -66,9 +66,13 @@ Preferred communication style: Simple, everyday language.
 ### Authentication
 - **Provider**: Replit Auth (OpenID Connect via Google)
 - **Domain Restriction**: Only @techorama.be and @techorama.nl email domains allowed
+- **Pipeline Access Control**:
+  - @techorama.be users can view both BE and NL pipelines
+  - @techorama.nl users can only view NL pipelines
 - **Implementation**: 
   - Domain validated at OAuth callback before session creation
   - All API endpoints protected with `isAuthenticated` + `isDomainAllowed` middleware
+  - Pipeline access enforced via `canAccessPipeline()` function on all pipeline-related endpoints
   - Session storage in PostgreSQL via `connect-pg-simple`
 - **Files**: `server/replit_integrations/auth/` directory contains auth logic
 

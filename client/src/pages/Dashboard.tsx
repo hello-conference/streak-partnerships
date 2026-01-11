@@ -82,9 +82,21 @@ function calculateStats(boxes: any[] | undefined) {
 }
 
 export default function Dashboard() {
-  const { data: beBoxes, isLoading: isBeLoading } = usePipelineBoxes(BE_PIPELINE_KEY);
-  const { data: nlBoxes, isLoading: isNlLoading } = usePipelineBoxes(NL_PIPELINE_KEY);
   const { user, logout, isLoggingOut } = useAuth();
+  
+  // Determine user's email domain to filter pipelines
+  const userDomain = user?.email?.split("@")[1]?.toLowerCase();
+  const canViewBE = userDomain === "techorama.be";
+  
+  // Filter pipelines based on user's email domain
+  // .be users can view both BE and NL, .nl users can only view NL
+  const visiblePipelines = pipelines.filter(p => {
+    if (canViewBE) return true; // BE users see all
+    return p.flag === "NL"; // NL users only see NL
+  });
+
+  const { data: beBoxes, isLoading: isBeLoading } = usePipelineBoxes(BE_PIPELINE_KEY, { enabled: canViewBE });
+  const { data: nlBoxes, isLoading: isNlLoading } = usePipelineBoxes(NL_PIPELINE_KEY);
 
   const beStats = calculateStats(beBoxes);
   const nlStats = calculateStats(nlBoxes);
@@ -122,7 +134,7 @@ export default function Dashboard() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-3xl mx-auto w-full">
-          {pipelines.map((pipeline) => (
+          {visiblePipelines.map((pipeline) => (
             pipeline.status === "active" ? (
               <Link key={pipeline.id} href={`/pipelines/${pipeline.id}`}>
                 <Card 
