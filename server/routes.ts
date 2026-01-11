@@ -72,6 +72,12 @@ export async function registerRoutes(
         f.name?.toLowerCase().includes("partnership")
       );
       
+      // Find the "Partner Page Live" field (checkbox/boolean field)
+      const partnerPageLiveField = pipeline.fields?.find((f: any) => 
+        f.name?.toLowerCase().includes("partner page live")
+      );
+      const partnerPageLiveFieldKey = partnerPageLiveField?.key;
+      
       // Build a mapping of field option keys to their display names
       const fieldOptionMap: Record<string, string> = {};
       if (partnershipField?.fieldOptions) {
@@ -84,6 +90,13 @@ export async function registerRoutes(
       const resolvedBoxes = boxes.map((box: any) => {
         if (box.fields && box.fields["1001"] && fieldOptionMap[box.fields["1001"]]) {
           box.fields["1001_resolved"] = fieldOptionMap[box.fields["1001"]];
+        }
+        // Resolve Partner Page Live field to a standardized key
+        if (partnerPageLiveFieldKey && box.fields && box.fields[partnerPageLiveFieldKey] !== undefined) {
+          box.fields["partnerPageLive"] = box.fields[partnerPageLiveFieldKey] === true;
+        } else {
+          box.fields = box.fields || {};
+          box.fields["partnerPageLive"] = false;
         }
         return box;
       });

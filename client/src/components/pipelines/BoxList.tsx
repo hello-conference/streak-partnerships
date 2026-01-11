@@ -3,7 +3,7 @@ import { StatusBadge } from "@/components/ui/StatusBadge";
 import { format } from "date-fns";
 import { Card } from "@/components/ui/card";
 import { motion } from "framer-motion";
-import { Calendar, ChevronDown, Mail, DollarSign } from "lucide-react";
+import { Calendar, ChevronDown, Mail, DollarSign, CheckCircle2, Circle } from "lucide-react";
 import { useState } from "react";
 
 interface BoxListProps {
@@ -49,7 +49,7 @@ export function BoxList({ boxes, pipeline, prevYearStats = {} }: BoxListProps) {
       }
     }
     
-    return null;
+    return "";
   };
 
   const getPrice = (box: Box): number | null => {
@@ -61,6 +61,11 @@ export function BoxList({ boxes, pipeline, prevYearStats = {} }: BoxListProps) {
     }
     
     return null;
+  };
+
+  const isPartnerPageLive = (box: Box): boolean => {
+    const boxObj = box as any;
+    return boxObj.fields?.partnerPageLive === true;
   };
 
   const formatCurrency = (value: number): string => {
@@ -105,7 +110,7 @@ export function BoxList({ boxes, pipeline, prevYearStats = {} }: BoxListProps) {
     const stageName = getStageName(box.stageKey);
     
     // Section 1: Confirmed partnerships (have a partnership assigned)
-    if (partnership && partnership !== null) {
+    if (partnership && partnership !== "") {
       if (!confirmedBoxes[partnership]) {
         confirmedBoxes[partnership] = [];
       }
@@ -229,6 +234,7 @@ export function BoxList({ boxes, pipeline, prevYearStats = {} }: BoxListProps) {
                       <div className="space-y-2 px-4 pb-4">
                         {partnershipBoxes.map((box, idx) => {
                           const boxPrice = getPrice(box);
+                          const pageLive = isPartnerPageLive(box);
                           return (
                           <motion.div
                             key={box.key}
@@ -239,7 +245,17 @@ export function BoxList({ boxes, pipeline, prevYearStats = {} }: BoxListProps) {
                             <Card className="p-3 bg-background hover:shadow-sm transition-shadow">
                               <div className="flex flex-col gap-2">
                                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                                  <div className="flex-1 min-w-0">
+                                  <div className="flex-1 min-w-0 flex items-center gap-2">
+                                    {pageLive ? (
+                                      <span className="flex items-center gap-1 text-xs font-medium text-green-600 dark:text-green-400 bg-green-100 dark:bg-green-900/30 px-1.5 py-0.5 rounded flex-shrink-0" title="Partner Page Live" data-testid="badge-live-status">
+                                        <CheckCircle2 className="w-3 h-3" />
+                                        LIVE
+                                      </span>
+                                    ) : (
+                                      <span className="flex items-center gap-1 text-xs font-medium text-muted-foreground bg-muted px-1.5 py-0.5 rounded flex-shrink-0" title="Partner Page Not Live" data-testid="badge-not-live-status">
+                                        <Circle className="w-3 h-3" />
+                                      </span>
+                                    )}
                                     <h5 className="font-medium text-foreground text-sm leading-tight">
                                       <span className="truncate inline">{box.name}</span> <span className="text-muted-foreground text-xs inline align-text-bottom">[{getStageName(box.stageKey)}]</span>
                                     </h5>
