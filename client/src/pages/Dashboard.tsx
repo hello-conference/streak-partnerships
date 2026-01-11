@@ -1,11 +1,14 @@
 import { Shell } from "@/components/layout/Shell";
 import { Card } from "@/components/ui/card";
 import { Link } from "wouter";
-import { Building2, MapPin, ArrowRight } from "lucide-react";
+import { Building2, MapPin, ArrowRight, Users, DollarSign } from "lucide-react";
+import { usePipelineBoxes } from "@/hooks/use-pipelines";
+
+const BE_PIPELINE_KEY = "agxzfm1haWxmb29nYWVyMwsSDE9yZ2FuaXphdGlvbiIMdGVjaG9yYW1hLmJlDAsSCFdvcmtmbG93GICApZrW4vgKDA";
 
 const pipelines = [
   {
-    id: "agxzfm1haWxmb29nYWVyMwsSDE9yZ2FuaXphdGlvbiIMdGVjaG9yYW1hLmJlDAsSCFdvcmtmbG93GICApZrW4vgKDA",
+    id: BE_PIPELINE_KEY,
     name: "Partners 2026 BE",
     country: "Belgium",
     flag: "BE",
@@ -22,7 +25,59 @@ const pipelines = [
   }
 ];
 
+const getPartnershipValue = (box: any): string | null => {
+  if (box.fields?.["1001_resolved"]) {
+    return box.fields["1001_resolved"];
+  }
+  if (box.fields?.["1001"]) {
+    const val = box.fields["1001"];
+    if (typeof val === "string") {
+      const fieldMap: Record<string, string> = {
+        "9001": "Ultimate",
+        "9002": "Platinum",
+        "9003": "Gold",
+        "9004": "Silver"
+      };
+      if (fieldMap[val]) return fieldMap[val];
+    }
+  }
+  return null;
+};
+
+const getPrice = (box: any): number | null => {
+  const priceField = box.fields?.["1003"];
+  if (priceField && typeof priceField === "object" && priceField.calculationValue) {
+    return priceField.calculationValue;
+  }
+  return null;
+};
+
+const formatEuro = (value: number): string => {
+  return new Intl.NumberFormat('de-DE', {
+    style: 'currency',
+    currency: 'EUR',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0
+  }).format(value);
+};
+
 export default function Dashboard() {
+  const { data: beBoxes, isLoading: isBeLoading } = usePipelineBoxes(BE_PIPELINE_KEY);
+
+  const beStats = { confirmedCount: 0, totalValue: 0 };
+  if (beBoxes) {
+    beBoxes.forEach((box: any) => {
+      const partnership = getPartnershipValue(box);
+      if (partnership) {
+        beStats.confirmedCount += 1;
+        const price = getPrice(box);
+        if (price) {
+          beStats.totalValue += price;
+        }
+      }
+    });
+  }
+
   return (
     <Shell>
       <div className="flex flex-col gap-8">
@@ -59,6 +114,30 @@ export default function Dashboard() {
                     <ArrowRight className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors" />
                   </div>
                   <p className="text-sm text-muted-foreground">{pipeline.description}</p>
+                  
+                  {pipeline.id === BE_PIPELINE_KEY && (
+                    <div className="mt-4 pt-4 border-t border-border/50 grid grid-cols-2 gap-4">
+                      <div className="flex items-center gap-2">
+                        <Users className="w-4 h-4 text-primary" />
+                        <div>
+                          <div className="text-lg font-bold text-foreground" data-testid="text-be-confirmed-count">
+                            {isBeLoading ? "..." : beStats.confirmedCount}
+                          </div>
+                          <div className="text-xs text-muted-foreground">Confirmed Partners</div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <DollarSign className="w-4 h-4 text-green-600" />
+                        <div>
+                          <div className="text-lg font-bold text-foreground" data-testid="text-be-total-value">
+                            {isBeLoading ? "..." : formatEuro(beStats.totalValue)}
+                          </div>
+                          <div className="text-xs text-muted-foreground">Total Value</div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   <div className="mt-4 pt-4 border-t border-border/50">
                     <span className="inline-flex items-center gap-1.5 text-xs font-medium text-green-600 dark:text-green-400 bg-green-100 dark:bg-green-900/30 px-2 py-1 rounded">
                       <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span>
