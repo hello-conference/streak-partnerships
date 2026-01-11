@@ -6,6 +6,25 @@ import { Building2, MapPin, ArrowRight, Users, Banknote, LogOut } from "lucide-r
 import { usePipelineBoxes } from "@/hooks/use-pipelines";
 import { useAuth } from "@/hooks/use-auth";
 
+function CountryFlag({ country }: { country: "BE" | "NL" }) {
+  if (country === "BE") {
+    return (
+      <div className="flex w-5 h-4 rounded-sm overflow-hidden shadow-sm border border-border/50" title="Belgium">
+        <div className="w-1/3 bg-black" />
+        <div className="w-1/3 bg-yellow-400" />
+        <div className="w-1/3 bg-red-600" />
+      </div>
+    );
+  }
+  return (
+    <div className="flex flex-col w-5 h-4 rounded-sm overflow-hidden shadow-sm border border-border/50" title="Netherlands">
+      <div className="h-1/3 bg-red-600" />
+      <div className="h-1/3 bg-white" />
+      <div className="h-1/3 bg-blue-700" />
+    </div>
+  );
+}
+
 const BE_PIPELINE_KEY = "agxzfm1haWxmb29nYWVyMwsSDE9yZ2FuaXphdGlvbiIMdGVjaG9yYW1hLmJlDAsSCFdvcmtmbG93GICApZrW4vgKDA";
 const NL_PIPELINE_KEY = "agxzfm1haWxmb29nYWVyMwsSDE9yZ2FuaXphdGlvbiIMdGVjaG9yYW1hLm5sDAsSCFdvcmtmbG93GICAparQocgLDA";
 
@@ -148,8 +167,8 @@ export default function Dashboard() {
                       </div>
                       <div>
                         <h2 className="font-semibold text-lg text-foreground">{pipeline.name}</h2>
-                        <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                          <MapPin className="w-3 h-3" />
+                        <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                          <CountryFlag country={pipeline.flag as "BE" | "NL"} />
                           {pipeline.country}
                         </div>
                       </div>
@@ -202,8 +221,8 @@ export default function Dashboard() {
                     </div>
                     <div>
                       <h2 className="font-semibold text-lg text-foreground">{pipeline.name}</h2>
-                      <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                        <MapPin className="w-3 h-3" />
+                      <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                        <CountryFlag country={pipeline.flag as "BE" | "NL"} />
                         {pipeline.country}
                       </div>
                     </div>
