@@ -117,5 +117,41 @@ export async function registerRoutes(
     }
   });
 
+  // Update a box field in Streak
+  app.post(api.boxes.updateField.path, async (req, res) => {
+    try {
+      const { key, fieldKey } = req.params;
+      const { value } = req.body;
+      
+      const apiKey = process.env.STREAK_API_KEY;
+      if (!apiKey) {
+        throw new Error("STREAK_API_KEY environment variable is not set");
+      }
+
+      const auth = Buffer.from(`${apiKey}:`).toString('base64');
+      
+      // Streak API to update a field value on a box
+      const response = await fetch(`${STREAK_API_BASE}/boxes/${key}/fields/${fieldKey}`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Basic ${auth}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ value })
+      });
+
+      if (!response.ok) {
+        const text = await response.text();
+        console.error(`Streak API Error: ${response.status} ${text}`);
+        throw new Error(`Streak API returned ${response.status}: ${text}`);
+      }
+
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error(error);
+      res.status(500).json({ message: error.message || "Failed to update field" });
+    }
+  });
+
   return httpServer;
 }

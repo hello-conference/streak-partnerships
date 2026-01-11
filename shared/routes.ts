@@ -48,6 +48,14 @@ export const api = {
         200: boxSchema,
         404: errorSchemas.notFound,
       },
+    },
+    updateField: {
+      method: 'POST' as const,
+      path: '/api/boxes/:key/fields/:fieldKey',
+      responses: {
+        200: z.object({ success: z.boolean() }),
+        500: errorSchemas.internal,
+      },
     }
   }
 };

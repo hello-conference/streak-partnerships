@@ -3,8 +3,21 @@ import { StatusBadge } from "@/components/ui/StatusBadge";
 import { format } from "date-fns";
 import { Card } from "@/components/ui/card";
 import { motion } from "framer-motion";
-import { Calendar, ChevronDown, Mail, DollarSign, CheckCircle2, Circle } from "lucide-react";
+import { Calendar, ChevronDown, Mail, DollarSign, CheckCircle2, XCircle } from "lucide-react";
 import { useState } from "react";
+import { useMutation } from "@tanstack/react-query";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { buildUrl, api } from "@shared/routes";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface BoxListProps {
   boxes: Box[];
@@ -19,6 +32,27 @@ export function BoxList({ boxes, pipeline, prevYearStats = {} }: BoxListProps) {
     "Platinum": true,
     "Gold": true,
     "Silver": true
+  });
+  
+  // State for the confirmation dialog
+  const [confirmDialog, setConfirmDialog] = useState<{
+    open: boolean;
+    boxKey: string;
+    boxName: string;
+    currentValue: boolean;
+  }>({ open: false, boxKey: "", boxName: "", currentValue: false });
+
+  // Mutation to update partner page live status
+  const updateFieldMutation = useMutation({
+    mutationFn: async ({ boxKey, value }: { boxKey: string; value: boolean }) => {
+      const url = buildUrl(api.boxes.updateField.path, { key: boxKey, fieldKey: "1002" });
+      await apiRequest("POST", url, { value });
+    },
+    onSuccess: () => {
+      // Invalidate boxes query to refresh data
+      queryClient.invalidateQueries({ queryKey: [api.pipelines.getBoxes.path] });
+      setConfirmDialog({ open: false, boxKey: "", boxName: "", currentValue: false });
+    },
   });
 
   const getStageName = (key?: string) => {
@@ -246,16 +280,36 @@ export function BoxList({ boxes, pipeline, prevYearStats = {} }: BoxListProps) {
                               <div className="flex flex-col gap-2">
                                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                                   <div className="flex-1 min-w-0 flex items-center gap-2">
-                                    {pageLive ? (
-                                      <span className="flex items-center gap-1 text-xs font-medium text-green-600 dark:text-green-400 bg-green-100 dark:bg-green-900/30 px-1.5 py-0.5 rounded flex-shrink-0" title="Partner Page Live" data-testid="badge-live-status">
-                                        <CheckCircle2 className="w-3 h-3" />
-                                        LIVE
-                                      </span>
-                                    ) : (
-                                      <span className="flex items-center gap-1 text-xs font-medium text-muted-foreground bg-muted px-1.5 py-0.5 rounded flex-shrink-0" title="Partner Page Not Live" data-testid="badge-not-live-status">
-                                        <Circle className="w-3 h-3" />
-                                      </span>
-                                    )}
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setConfirmDialog({
+                                          open: true,
+                                          boxKey: box.key,
+                                          boxName: box.name,
+                                          currentValue: pageLive
+                                        });
+                                      }}
+                                      className={`flex items-center gap-1 text-xs font-medium px-1.5 py-0.5 rounded flex-shrink-0 cursor-pointer transition-opacity hover:opacity-80 ${
+                                        pageLive 
+                                          ? "text-green-600 dark:text-green-400 bg-green-100 dark:bg-green-900/30" 
+                                          : "text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900/30"
+                                      }`}
+                                      title={pageLive ? "Partner Page Live - Click to deactivate" : "Partner Page Not Live - Click to activate"}
+                                      data-testid={pageLive ? "badge-live-status" : "badge-not-live-status"}
+                                    >
+                                      {pageLive ? (
+                                        <>
+                                          <CheckCircle2 className="w-3 h-3" />
+                                          LIVE
+                                        </>
+                                      ) : (
+                                        <>
+                                          <XCircle className="w-3 h-3" />
+                                          OFF
+                                        </>
+                                      )}
+                                    </button>
                                     <h5 className="font-medium text-foreground text-sm leading-tight">
                                       <span className="truncate inline">{box.name}</span> <span className="text-muted-foreground text-xs inline align-text-bottom">[{getStageName(box.stageKey)}]</span>
                                     </h5>
@@ -378,6 +432,40 @@ export function BoxList({ boxes, pipeline, prevYearStats = {} }: BoxListProps) {
           </div>
         );
       })}
+
+      {/* Confirmation Dialog for toggling Partner Page Live status */}
+      <AlertDialog open={confirmDialog.open} onOpenChange={(open) => {
+        if (!open) setConfirmDialog({ open: false, boxKey: "", boxName: "", currentValue: false });
+      }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {confirmDialog.currentValue ? "Deactivate Partner Page?" : "Activate Partner Page?"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {confirmDialog.currentValue 
+                ? `Are you sure you want to mark the partner page for "${confirmDialog.boxName}" as not live?`
+                : `Are you sure you want to mark the partner page for "${confirmDialog.boxName}" as live?`
+              }
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={updateFieldMutation.isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                updateFieldMutation.mutate({
+                  boxKey: confirmDialog.boxKey,
+                  value: !confirmDialog.currentValue
+                });
+              }}
+              disabled={updateFieldMutation.isPending}
+              data-testid="button-confirm-toggle"
+            >
+              {updateFieldMutation.isPending ? "Updating..." : "Confirm"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
