@@ -1,17 +1,8 @@
-import { pgTable, text, serial, timestamp } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
-// We primarily fetch from external API, but we'll keep a users table for convention
-export const users = pgTable("users", {
-  id: serial("id").primaryKey(),
-  username: text("username").notNull().unique(),
-  password: text("password").notNull(),
-});
-
-export const insertUserSchema = createInsertSchema(users);
-export type User = typeof users.$inferSelect;
-export type InsertUser = z.infer<typeof insertUserSchema>;
+// Export auth models for Replit Auth integration
+export * from "./models/auth";
 
 // === Streak API Schemas ===
 
@@ -42,8 +33,7 @@ export const boxSchema = z.object({
   stageKey: z.string().optional(),
   pipelineKey: z.string().optional(),
   lastUpdatedTimestamp: z.number().optional(),
-  // Custom fields from Streak API (keyed by field key)
-  [z.string()]: z.any().optional(),
+  fields: z.record(z.string(), z.any()).optional(),
 }).passthrough();
 
 // API Response Types

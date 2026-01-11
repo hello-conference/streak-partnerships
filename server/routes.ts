@@ -3,8 +3,12 @@ import type { Server } from "http";
 import { storage } from "./storage";
 import { api } from "@shared/routes";
 import { z } from "zod";
+import { setupAuth, registerAuthRoutes, isAuthenticated } from "./replit_integrations/auth";
 
 const STREAK_API_BASE = "https://www.streak.com/api/v1";
+
+// Allowed email domains for authentication
+const ALLOWED_DOMAINS = ["techorama.be", "techorama.nl"];
 
 // Known NL pipeline keys (will be populated after first fetch)
 const NL_PIPELINE_KEYS = new Set<string>();
@@ -16,10 +20,33 @@ function isNLPipeline(pipelineKey: string): boolean {
   return pipelineKey.includes("dGVjaG9yYW1hLm5s");
 }
 
+// Middleware to check if user email is from allowed domains
+function isDomainAllowed(req: any, res: any, next: any) {
+  const user = req.user as any;
+  const email = user?.claims?.email;
+  
+  if (!email) {
+    return res.status(403).json({ message: "Access denied: No email provided" });
+  }
+  
+  const domain = email.split("@")[1]?.toLowerCase();
+  if (!ALLOWED_DOMAINS.includes(domain)) {
+    return res.status(403).json({ 
+      message: `Access denied: Only @techorama.be and @techorama.nl email addresses are allowed` 
+    });
+  }
+  
+  next();
+}
+
 export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
+  
+  // Setup authentication (must be before other routes)
+  await setupAuth(app);
+  registerAuthRoutes(app);
   
   // Helper to fetch from Streak with specific API key
   async function streakFetchWithKey(path: string, apiKey: string) {
@@ -64,7 +91,8 @@ export async function registerRoutes(
     return isNLPipeline(pipelineKey) ? streakFetchNL : streakFetch;
   }
 
-  app.get(api.pipelines.list.path, async (req, res) => {
+  // Protected API routes - require authentication and domain check
+  app.get(api.pipelines.list.path, isAuthenticated, isDomainAllowed, async (req, res) => {
     try {
       // Fetch from both BE and NL APIs
       const [bePipelines, nlPipelines] = await Promise.all([
@@ -83,7 +111,7 @@ export async function registerRoutes(
     }
   });
 
-  app.get(api.pipelines.get.path, async (req, res) => {
+  app.get(api.pipelines.get.path, isAuthenticated, isDomainAllowed, async (req, res) => {
     try {
       const { key } = req.params;
       const fetcher = getStreakFetcher(key);
@@ -94,7 +122,7 @@ export async function registerRoutes(
     }
   });
 
-  app.get(api.pipelines.getBoxes.path, async (req, res) => {
+  app.get(api.pipelines.getBoxes.path, isAuthenticated, isDomainAllowed, async (req, res) => {
     try {
       const { key } = req.params;
       const fetcher = getStreakFetcher(key);
@@ -143,7 +171,7 @@ export async function registerRoutes(
     }
   });
 
-  app.get(api.boxes.get.path, async (req, res) => {
+  app.get(api.boxes.get.path, isAuthenticated, isDomainAllowed, async (req, res) => {
     try {
       const { key } = req.params;
       const box = await streakFetch(`/boxes/${key}`);
@@ -154,7 +182,7 @@ export async function registerRoutes(
   });
 
   // Update a box field in Streak
-  app.post(api.boxes.updateField.path, async (req, res) => {
+  app.post(api.boxes.updateField.path, isAuthenticated, isDomainAllowed, async (req, res) => {
     try {
       const { key, fieldKey } = req.params;
       const { value, pipelineKey } = req.body;

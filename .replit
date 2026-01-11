@@ -1,4 +1,4 @@
-modules = ["nodejs-20", "web"]
+modules = ["nodejs-20", "web", "postgresql-16"]
 run = "npm run dev"
 hidden = [".config", ".git", "generated-icon.png", "node_modules", "dist"]
 
@@ -40,3 +40,4 @@ waitForPort = 5000
 
 [agent]
 expertMode = true
+integrations = ["javascript_log_in_with_replit:2.0.0"]
