@@ -239,16 +239,39 @@ export async function registerRoutes(
   app.post(api.boxes.updateField.path, isAuthenticated, isDomainAllowed, async (req: any, res) => {
     try {
       const { key, fieldKey } = req.params;
-      const { value, pipelineKey } = req.body;
+      const { value } = req.body;
       const email = req.user?.claims?.email;
       
-      // Check pipeline access permission if pipelineKey is provided
-      if (pipelineKey && !canAccessPipeline(email, pipelineKey)) {
+      // Fetch the box first to get its actual pipeline key (server-side validation)
+      let box = null;
+      let actualPipelineKey = null;
+      let isNL = false;
+      
+      try {
+        box = await streakFetch(`/boxes/${key}`);
+        actualPipelineKey = box?.pipelineKey;
+        isNL = false;
+      } catch {
+        // Try NL API if BE fails
+        try {
+          box = await streakFetchNL(`/boxes/${key}`);
+          actualPipelineKey = box?.pipelineKey;
+          isNL = true;
+        } catch {
+          return res.status(404).json({ message: "Box not found" });
+        }
+      }
+      
+      if (!actualPipelineKey) {
+        return res.status(400).json({ message: "Could not determine pipeline for this box" });
+      }
+      
+      // Check pipeline access permission using the ACTUAL pipeline key (not client-supplied)
+      if (!canAccessPipeline(email, actualPipelineKey)) {
         return res.status(403).json({ message: "Access denied: You don't have permission to modify this pipeline" });
       }
       
-      // Use the appropriate API key based on pipeline
-      const isNL = pipelineKey && isNLPipeline(pipelineKey);
+      // Use the appropriate API key based on actual pipeline
       const apiKey = isNL ? process.env.STREAK_API_KEY_NL : process.env.STREAK_API_KEY;
       
       if (!apiKey) {
