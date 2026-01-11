@@ -4,7 +4,7 @@ import { useRoute } from "wouter";
 import { BoxList } from "@/components/pipelines/BoxList";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, Filter, Search, Plus, TrendingUp, TrendingDown } from "lucide-react";
+import { ChevronLeft, Filter, Search } from "lucide-react";
 import { Link } from "wouter";
 import { Input } from "@/components/ui/input";
 import { useState, useMemo } from "react";
@@ -21,10 +21,16 @@ export default function PipelineDetail() {
   const [search, setSearch] = useState("");
 
   const prevYearPipelineKey = useMemo(() => {
-    if (!allPipelines) return null;
-    const prevYearPipeline = allPipelines.find(p => p.name === "Partners 2025 BE");
+    if (!allPipelines || !pipeline) return null;
+    // Extract the country code from current pipeline (e.g., "Partners 2026 BE" -> "BE")
+    const currentName = pipeline.name || "";
+    const countryMatch = currentName.match(/Partners \d{4} (\w+)$/);
+    if (!countryMatch) return null;
+    const country = countryMatch[1];
+    // Find previous year pipeline for same country
+    const prevYearPipeline = allPipelines.find(p => p.name === `Partners 2025 ${country}`);
     return prevYearPipeline?.key || null;
-  }, [allPipelines]);
+  }, [allPipelines, pipeline]);
 
   const { data: prevYearBoxes } = usePipelineBoxes(prevYearPipelineKey);
 
@@ -155,14 +161,9 @@ export default function PipelineDetail() {
         {/* Pipeline Info Header */}
         <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-6">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight text-foreground mb-2">{pipeline.name}</h1>
+            <h1 className="text-3xl font-bold tracking-tight text-foreground mb-2" data-testid="text-pipeline-title">{pipeline.name}</h1>
             <p className="text-muted-foreground max-w-2xl">Manage your deals and track progress compared to the partnerships in 2025.</p>
           </div>
-          
-          <Button className="shrink-0 gap-2 shadow-lg shadow-primary/25">
-            <Plus className="w-4 h-4" />
-            Add New Box
-          </Button>
         </div>
 
         {/* Partnership Stats Cards */}
