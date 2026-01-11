@@ -11,6 +11,25 @@ import { useState, useMemo } from "react";
 import { Card } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 
+function CountryFlag({ country }: { country: "BE" | "NL" }) {
+  if (country === "BE") {
+    return (
+      <div className="flex w-6 h-5 rounded-sm overflow-hidden shadow-sm border border-border/50" title="Belgium">
+        <div className="w-1/3 bg-black" />
+        <div className="w-1/3 bg-yellow-400" />
+        <div className="w-1/3 bg-red-600" />
+      </div>
+    );
+  }
+  return (
+    <div className="flex flex-col w-6 h-5 rounded-sm overflow-hidden shadow-sm border border-border/50" title="Netherlands">
+      <div className="h-1/3 bg-red-600" />
+      <div className="h-1/3 bg-white" />
+      <div className="h-1/3 bg-blue-700" />
+    </div>
+  );
+}
+
 export default function PipelineDetail() {
   const [match, params] = useRoute("/pipelines/:key");
   const key = match ? params.key : null;
@@ -161,7 +180,11 @@ export default function PipelineDetail() {
         {/* Pipeline Info Header */}
         <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-6">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight text-foreground mb-2" data-testid="text-pipeline-title">{pipeline.name}</h1>
+            <div className="flex items-center gap-3 mb-2">
+              {pipeline.name?.includes(" BE") && <CountryFlag country="BE" />}
+              {pipeline.name?.includes(" NL") && <CountryFlag country="NL" />}
+              <h1 className="text-3xl font-bold tracking-tight text-foreground" data-testid="text-pipeline-title">{pipeline.name}</h1>
+            </div>
             <p className="text-muted-foreground max-w-2xl">Manage your deals and track progress compared to the partnerships in 2025.</p>
           </div>
         </div>
