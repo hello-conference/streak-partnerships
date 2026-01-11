@@ -83,7 +83,7 @@ export default function Dashboard() {
       <div className="flex flex-col gap-8">
         <div className="text-center">
           <h1 className="text-3xl font-bold tracking-tight text-foreground mb-2" data-testid="text-dashboard-title">
-            StreakFlow Dashboard
+            Techorama Partnership Dashboard
           </h1>
           <p className="text-muted-foreground max-w-xl mx-auto">
             Select a pipeline to view and manage partnership deals
