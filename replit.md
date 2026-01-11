@@ -7,7 +7,9 @@ StreakFlow is a partnership management dashboard that integrates with the Streak
 ## Recent Changes (January 2026)
 
 - Added dashboard landing page with navigation cards for BE and NL pipelines
-- NL pipeline shows as "Coming Soon" until connection details are provided
+- **NL pipeline now connected** with STREAK_API_KEY_NL - shows live partner counts and total values
+- Dual API key architecture: BE pipelines use STREAK_API_KEY, NL pipelines use STREAK_API_KEY_NL
+- Backend auto-detects NL pipelines based on pipeline key format (techorama.nl organization)
 - Removed sidebar navigation in favor of simplified dashboard-based navigation
 - Removed non-functional "Add New Box" button
 - Added clickable Partner Page Live badges (red=OFF, green=LIVE) with confirmation dialog for toggling status
@@ -90,4 +92,5 @@ Preferred communication style: Simple, everyday language.
 
 ### Environment Variables Required
 - `DATABASE_URL`: PostgreSQL connection string
-- `STREAK_API_KEY`: Streak CRM API authentication key
+- `STREAK_API_KEY`: Streak CRM API authentication key (Belgium organization)
+- `STREAK_API_KEY_NL`: Streak CRM API authentication key (Netherlands organization)

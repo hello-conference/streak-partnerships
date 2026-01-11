@@ -5,6 +5,7 @@ import { Building2, MapPin, ArrowRight, Users, Banknote } from "lucide-react";
 import { usePipelineBoxes } from "@/hooks/use-pipelines";
 
 const BE_PIPELINE_KEY = "agxzfm1haWxmb29nYWVyMwsSDE9yZ2FuaXphdGlvbiIMdGVjaG9yYW1hLmJlDAsSCFdvcmtmbG93GICApZrW4vgKDA";
+const NL_PIPELINE_KEY = "agxzfm1haWxmb29nYWVyMwsSDE9yZ2FuaXphdGlvbiIMdGVjaG9yYW1hLm5sDAsSCFdvcmtmbG93GICAvpeP75gJDA";
 
 const pipelines = [
   {
@@ -16,11 +17,11 @@ const pipelines = [
     description: "Manage partnership deals for Techorama Belgium 2026"
   },
   {
-    id: "nl-pipeline",
+    id: NL_PIPELINE_KEY,
     name: "Partners 2026 NL",
     country: "Netherlands",
     flag: "NL",
-    status: "coming_soon",
+    status: "active",
     description: "Partnership deals for Techorama Netherlands 2026"
   }
 ];
@@ -61,22 +62,29 @@ const formatEuro = (value: number): string => {
   }).format(value);
 };
 
-export default function Dashboard() {
-  const { data: beBoxes, isLoading: isBeLoading } = usePipelineBoxes(BE_PIPELINE_KEY);
-
-  const beStats = { confirmedCount: 0, totalValue: 0 };
-  if (beBoxes) {
-    beBoxes.forEach((box: any) => {
+function calculateStats(boxes: any[] | undefined) {
+  const stats = { confirmedCount: 0, totalValue: 0 };
+  if (boxes) {
+    boxes.forEach((box: any) => {
       const partnership = getPartnershipValue(box);
       if (partnership) {
-        beStats.confirmedCount += 1;
+        stats.confirmedCount += 1;
         const price = getPrice(box);
         if (price) {
-          beStats.totalValue += price;
+          stats.totalValue += price;
         }
       }
     });
   }
+  return stats;
+}
+
+export default function Dashboard() {
+  const { data: beBoxes, isLoading: isBeLoading } = usePipelineBoxes(BE_PIPELINE_KEY);
+  const { data: nlBoxes, isLoading: isNlLoading } = usePipelineBoxes(NL_PIPELINE_KEY);
+
+  const beStats = calculateStats(beBoxes);
+  const nlStats = calculateStats(nlBoxes);
 
   return (
     <Shell>
@@ -115,28 +123,28 @@ export default function Dashboard() {
                   </div>
                   <p className="text-sm text-muted-foreground">{pipeline.description}</p>
                   
-                  {pipeline.id === BE_PIPELINE_KEY && (
-                    <div className="mt-4 pt-4 border-t border-border/50 grid grid-cols-2 gap-4">
-                      <div className="flex items-center gap-2">
-                        <Users className="w-4 h-4 text-primary" />
-                        <div>
-                          <div className="text-lg font-bold text-foreground" data-testid="text-be-confirmed-count">
-                            {isBeLoading ? "..." : beStats.confirmedCount}
-                          </div>
-                          <div className="text-xs text-muted-foreground">Confirmed Partners</div>
+                  <div className="mt-4 pt-4 border-t border-border/50 grid grid-cols-2 gap-4">
+                    <div className="flex items-center gap-2">
+                      <Users className="w-4 h-4 text-primary" />
+                      <div>
+                        <div className="text-lg font-bold text-foreground" data-testid={`text-${pipeline.flag.toLowerCase()}-confirmed-count`}>
+                          {(pipeline.id === BE_PIPELINE_KEY ? isBeLoading : isNlLoading) ? "..." : 
+                           (pipeline.id === BE_PIPELINE_KEY ? beStats.confirmedCount : nlStats.confirmedCount)}
                         </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Banknote className="w-4 h-4 text-green-600" />
-                        <div>
-                          <div className="text-lg font-bold text-foreground" data-testid="text-be-total-value">
-                            {isBeLoading ? "..." : formatEuro(beStats.totalValue)}
-                          </div>
-                          <div className="text-xs text-muted-foreground">Total Value</div>
-                        </div>
+                        <div className="text-xs text-muted-foreground">Confirmed Partners</div>
                       </div>
                     </div>
-                  )}
+                    <div className="flex items-center gap-2">
+                      <Banknote className="w-4 h-4 text-green-600" />
+                      <div>
+                        <div className="text-lg font-bold text-foreground" data-testid={`text-${pipeline.flag.toLowerCase()}-total-value`}>
+                          {(pipeline.id === BE_PIPELINE_KEY ? isBeLoading : isNlLoading) ? "..." : 
+                           formatEuro(pipeline.id === BE_PIPELINE_KEY ? beStats.totalValue : nlStats.totalValue)}
+                        </div>
+                        <div className="text-xs text-muted-foreground">Total Value</div>
+                      </div>
+                    </div>
+                  </div>
 
                   <div className="mt-4 pt-4 border-t border-border/50">
                     <span className="inline-flex items-center gap-1.5 text-xs font-medium text-green-600 dark:text-green-400 bg-green-100 dark:bg-green-900/30 px-2 py-1 rounded">

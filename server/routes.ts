@@ -6,19 +6,23 @@ import { z } from "zod";
 
 const STREAK_API_BASE = "https://www.streak.com/api/v1";
 
+// Known NL pipeline keys (will be populated after first fetch)
+const NL_PIPELINE_KEYS = new Set<string>();
+
+// Detect NL pipelines by checking if key contains "techorama.nl" (base64 encoded)
+function isNLPipeline(pipelineKey: string): boolean {
+  if (NL_PIPELINE_KEYS.has(pipelineKey)) return true;
+  // The key contains "dGVjaG9yYW1hLm5s" which is base64 for "techorama.nl"
+  return pipelineKey.includes("dGVjaG9yYW1hLm5s");
+}
+
 export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
   
-  // Helper to fetch from Streak
-  async function streakFetch(path: string) {
-    const apiKey = process.env.STREAK_API_KEY;
-    if (!apiKey) {
-      throw new Error("STREAK_API_KEY environment variable is not set");
-    }
-
-    // Streak uses Basic Auth with the API key as the username
+  // Helper to fetch from Streak with specific API key
+  async function streakFetchWithKey(path: string, apiKey: string) {
     const auth = Buffer.from(`${apiKey}:`).toString('base64');
     
     const response = await fetch(`${STREAK_API_BASE}${path}`, {
@@ -37,12 +41,42 @@ export async function registerRoutes(
     return response.json();
   }
 
+  // Helper to fetch from Streak (BE by default)
+  async function streakFetch(path: string) {
+    const apiKey = process.env.STREAK_API_KEY;
+    if (!apiKey) {
+      throw new Error("STREAK_API_KEY environment variable is not set");
+    }
+    return streakFetchWithKey(path, apiKey);
+  }
+
+  // Helper to fetch from Streak NL
+  async function streakFetchNL(path: string) {
+    const apiKey = process.env.STREAK_API_KEY_NL;
+    if (!apiKey) {
+      throw new Error("STREAK_API_KEY_NL environment variable is not set");
+    }
+    return streakFetchWithKey(path, apiKey);
+  }
+
+  // Determine which API key to use based on pipeline key
+  function getStreakFetcher(pipelineKey: string) {
+    return isNLPipeline(pipelineKey) ? streakFetchNL : streakFetch;
+  }
+
   app.get(api.pipelines.list.path, async (req, res) => {
     try {
-      const pipelines = await streakFetch('/pipelines');
-      // Format/Filter if necessary to match schema
-      // Streak returns an array of pipeline objects
-      res.json(pipelines);
+      // Fetch from both BE and NL APIs
+      const [bePipelines, nlPipelines] = await Promise.all([
+        streakFetch('/pipelines').catch(() => []),
+        streakFetchNL('/pipelines').catch(() => [])
+      ]);
+      
+      // Track NL pipeline keys for routing
+      nlPipelines.forEach((p: any) => NL_PIPELINE_KEYS.add(p.key));
+      
+      // Combine and return all pipelines
+      res.json([...bePipelines, ...nlPipelines]);
     } catch (error: any) {
       console.error(error);
       res.status(500).json({ message: error.message || "Failed to fetch pipelines" });
@@ -52,7 +86,8 @@ export async function registerRoutes(
   app.get(api.pipelines.get.path, async (req, res) => {
     try {
       const { key } = req.params;
-      const pipeline = await streakFetch(`/pipelines/${key}`);
+      const fetcher = getStreakFetcher(key);
+      const pipeline = await fetcher(`/pipelines/${key}`);
       res.json(pipeline);
     } catch (error: any) {
       res.status(404).json({ message: "Pipeline not found or error fetching" });
@@ -62,10 +97,11 @@ export async function registerRoutes(
   app.get(api.pipelines.getBoxes.path, async (req, res) => {
     try {
       const { key } = req.params;
-      const boxes = await streakFetch(`/pipelines/${key}/boxes`);
+      const fetcher = getStreakFetcher(key);
+      const boxes = await fetcher(`/pipelines/${key}/boxes`);
       
       // Also fetch the pipeline to get field definitions for resolving custom field values
-      const pipeline = await streakFetch(`/pipelines/${key}`);
+      const pipeline = await fetcher(`/pipelines/${key}`);
       
       // Find the Partnership field and its option mappings
       const partnershipField = pipeline.fields?.find((f: any) => 
@@ -121,11 +157,14 @@ export async function registerRoutes(
   app.post(api.boxes.updateField.path, async (req, res) => {
     try {
       const { key, fieldKey } = req.params;
-      const { value } = req.body;
+      const { value, pipelineKey } = req.body;
       
-      const apiKey = process.env.STREAK_API_KEY;
+      // Use the appropriate API key based on pipeline
+      const isNL = pipelineKey && isNLPipeline(pipelineKey);
+      const apiKey = isNL ? process.env.STREAK_API_KEY_NL : process.env.STREAK_API_KEY;
+      
       if (!apiKey) {
-        throw new Error("STREAK_API_KEY environment variable is not set");
+        throw new Error(`STREAK_API_KEY${isNL ? '_NL' : ''} environment variable is not set`);
       }
 
       const auth = Buffer.from(`${apiKey}:`).toString('base64');
