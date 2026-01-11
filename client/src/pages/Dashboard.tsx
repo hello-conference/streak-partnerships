@@ -1,7 +1,7 @@
 import { Shell } from "@/components/layout/Shell";
 import { Card } from "@/components/ui/card";
 import { Link } from "wouter";
-import { Building2, MapPin, ArrowRight, Users, DollarSign } from "lucide-react";
+import { Building2, MapPin, ArrowRight, Users, Banknote } from "lucide-react";
 import { usePipelineBoxes } from "@/hooks/use-pipelines";
 
 const BE_PIPELINE_KEY = "agxzfm1haWxmb29nYWVyMwsSDE9yZ2FuaXphdGlvbiIMdGVjaG9yYW1hLmJlDAsSCFdvcmtmbG93GICApZrW4vgKDA";
@@ -127,7 +127,7 @@ export default function Dashboard() {
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        <DollarSign className="w-4 h-4 text-green-600" />
+                        <Banknote className="w-4 h-4 text-green-600" />
                         <div>
                           <div className="text-lg font-bold text-foreground" data-testid="text-be-total-value">
                             {isBeLoading ? "..." : formatEuro(beStats.totalValue)}
