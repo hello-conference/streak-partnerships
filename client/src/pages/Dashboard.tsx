@@ -5,7 +5,7 @@ import { Building2, MapPin, ArrowRight, Users, Banknote } from "lucide-react";
 import { usePipelineBoxes } from "@/hooks/use-pipelines";
 
 const BE_PIPELINE_KEY = "agxzfm1haWxmb29nYWVyMwsSDE9yZ2FuaXphdGlvbiIMdGVjaG9yYW1hLmJlDAsSCFdvcmtmbG93GICApZrW4vgKDA";
-const NL_PIPELINE_KEY = "agxzfm1haWxmb29nYWVyMwsSDE9yZ2FuaXphdGlvbiIMdGVjaG9yYW1hLm5sDAsSCFdvcmtmbG93GICAvpeP75gJDA";
+const NL_PIPELINE_KEY = "agxzfm1haWxmb29nYWVyMwsSDE9yZ2FuaXphdGlvbiIMdGVjaG9yYW1hLm5sDAsSCFdvcmtmbG93GICAparQocgLDA";
 
 const pipelines = [
   {
