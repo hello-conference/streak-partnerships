@@ -1,8 +1,10 @@
 import { Shell } from "@/components/layout/Shell";
 import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
-import { Building2, MapPin, ArrowRight, Users, Banknote } from "lucide-react";
+import { Building2, MapPin, ArrowRight, Users, Banknote, LogOut } from "lucide-react";
 import { usePipelineBoxes } from "@/hooks/use-pipelines";
+import { useAuth } from "@/hooks/use-auth";
 
 const BE_PIPELINE_KEY = "agxzfm1haWxmb29nYWVyMwsSDE9yZ2FuaXphdGlvbiIMdGVjaG9yYW1hLmJlDAsSCFdvcmtmbG93GICApZrW4vgKDA";
 const NL_PIPELINE_KEY = "agxzfm1haWxmb29nYWVyMwsSDE9yZ2FuaXphdGlvbiIMdGVjaG9yYW1hLm5sDAsSCFdvcmtmbG93GICAparQocgLDA";
@@ -82,6 +84,7 @@ function calculateStats(boxes: any[] | undefined) {
 export default function Dashboard() {
   const { data: beBoxes, isLoading: isBeLoading } = usePipelineBoxes(BE_PIPELINE_KEY);
   const { data: nlBoxes, isLoading: isNlLoading } = usePipelineBoxes(NL_PIPELINE_KEY);
+  const { user, logout, isLoggingOut } = useAuth();
 
   const beStats = calculateStats(beBoxes);
   const nlStats = calculateStats(nlBoxes);
@@ -89,6 +92,26 @@ export default function Dashboard() {
   return (
     <Shell>
       <div className="flex flex-col gap-8">
+        <div className="flex justify-end">
+          <div className="flex items-center gap-3">
+            {user && (
+              <span className="text-sm text-muted-foreground" data-testid="text-user-email">
+                {user.email}
+              </span>
+            )}
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => logout()}
+              disabled={isLoggingOut}
+              data-testid="button-logout"
+            >
+              <LogOut className="w-4 h-4 mr-2" />
+              {isLoggingOut ? "Signing out..." : "Sign out"}
+            </Button>
+          </div>
+        </div>
+        
         <div className="text-center">
           <h1 className="text-3xl font-bold tracking-tight text-foreground mb-2" data-testid="text-dashboard-title">
             Techorama Partnership Dashboard
