@@ -26,6 +26,12 @@ export const pipelineWithStagesSchema = pipelineSchema.extend({
   fields: z.array(z.any()).optional(),
 });
 
+const contactSchema = z.object({
+  name: z.string().nullable().optional(),
+  email: z.string().nullable().optional(),
+  phone: z.string().nullable().optional(),
+});
+
 export const boxSchema = z.object({
   key: z.string(),
   name: z.string(),
@@ -34,6 +40,7 @@ export const boxSchema = z.object({
   pipelineKey: z.string().optional(),
   lastUpdatedTimestamp: z.number().optional(),
   fields: z.record(z.string(), z.any()).optional(),
+  contacts: z.array(contactSchema).optional(),
 }).passthrough();
 
 // API Response Types
