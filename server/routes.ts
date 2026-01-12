@@ -198,16 +198,26 @@ export async function registerRoutes(
         try {
           const contactLinks = await fetcher(`/boxes/${box.key}/contacts`);
           if (contactLinks && Array.isArray(contactLinks) && contactLinks.length > 0) {
-            // Fetch full contact details for each linked contact
+            // Fetch full contact details for each linked contact (all of them)
             const contactDetails = await Promise.all(
-              contactLinks.slice(0, 5).map(async (link: any) => {
+              contactLinks.map(async (link: any) => {
                 try {
                   const contact = await fetcher(`/contacts/${link.contactKey}`);
+                  // Get the best name and all emails
+                  const fullName = contact.givenName && contact.familyName 
+                    ? `${contact.givenName} ${contact.familyName}`.trim()
+                    : contact.givenName || contact.familyName || null;
+                  
+                  // Get primary email (first non-internal one)
+                  const emails = contact.emailAddresses || [];
+                  const primaryEmail = emails.find((e: string) => 
+                    !e.toLowerCase().includes('techorama.be') && 
+                    !e.toLowerCase().includes('techorama.nl')
+                  ) || emails[0] || null;
+                  
                   return {
-                    name: contact.givenName && contact.familyName 
-                      ? `${contact.givenName} ${contact.familyName}`.trim()
-                      : contact.givenName || contact.familyName || null,
-                    email: contact.emailAddresses?.[0] || null,
+                    name: fullName,
+                    email: primaryEmail,
                     phone: contact.phoneNumbers?.[0] || null
                   };
                 } catch {
