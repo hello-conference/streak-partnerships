@@ -56,6 +56,14 @@ export const api = {
         200: z.object({ success: z.boolean() }),
         500: errorSchemas.internal,
       },
+    },
+    exportContacts: {
+      method: 'GET' as const,
+      path: '/api/pipelines/:key/export-contacts',
+      responses: {
+        200: z.any(),
+        500: errorSchemas.internal,
+      },
     }
   }
 };

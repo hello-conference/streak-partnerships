@@ -18,7 +18,8 @@ StreakFlow is a partnership management dashboard that integrates with the Streak
 - Removed non-functional "Add New Box" button
 - Added clickable Partner Page Live badges (red=OFF, green=LIVE) with confirmation dialog for toggling status
 - Dynamic previous year comparison based on pipeline country code
-- **Contacts from Streak "Contacts and organizations"**: Each box displays linked contacts fetched via `/boxes/{boxKey}/contacts` v1 API endpoint, with individual envelope icons to copy email addresses to clipboard
+- **Contacts from Streak "Contacts and organizations"**: Each box displays linked contacts fetched via Streak v2 API `/contacts/{contactKey}` endpoint, with individual envelope icons to copy email addresses to clipboard
+- **Export Partner Contacts**: Button on pipeline detail page exports Excel file with columns: Partner Name, Partnership Package, Partnership Stage, Partnership Contacts (Email)
 
 ## User Preferences
 

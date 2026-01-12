@@ -4,7 +4,7 @@ import { useRoute } from "wouter";
 import { BoxList } from "@/components/pipelines/BoxList";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, Filter, Search } from "lucide-react";
+import { ChevronLeft, Filter, Search, Download } from "lucide-react";
 import { Link } from "wouter";
 import { Input } from "@/components/ui/input";
 import { useState, useMemo } from "react";
@@ -187,6 +187,17 @@ export default function PipelineDetail() {
             </div>
             <p className="text-muted-foreground max-w-2xl">Manage your deals and track progress compared to the partnerships in 2025.</p>
           </div>
+          <Button 
+            variant="outline" 
+            className="gap-2 shrink-0"
+            onClick={() => {
+              window.location.href = `/api/pipelines/${key}/export-contacts`;
+            }}
+            data-testid="button-export-contacts"
+          >
+            <Download className="w-4 h-4" />
+            Export Partner Contacts
+          </Button>
         </div>
 
         {/* Partnership Stats Cards */}

@@ -4,6 +4,7 @@ import { storage } from "./storage";
 import { api } from "@shared/routes";
 import { z } from "zod";
 import { setupAuth, registerAuthRoutes, isAuthenticated } from "./replit_integrations/auth";
+import * as XLSX from "xlsx";
 
 const STREAK_API_BASE = "https://www.streak.com/api/v1";
 
@@ -354,6 +355,120 @@ export async function registerRoutes(
     } catch (error: any) {
       console.error(error);
       res.status(500).json({ message: error.message || "Failed to update field" });
+    }
+  });
+
+  // Export partner contacts to Excel
+  app.get(api.boxes.exportContacts.path, isAuthenticated, isDomainAllowed, async (req: any, res) => {
+    try {
+      const { key } = req.params;
+      const email = req.user?.claims?.email;
+      
+      // Check pipeline access permission
+      if (!canAccessPipeline(email, key)) {
+        return res.status(403).json({ message: "Access denied: You don't have permission to export from this pipeline" });
+      }
+
+      const fetcher = getStreakFetcher(key);
+      const pipeline = await fetcher(`/pipelines/${key}`);
+      const boxes = await fetcher(`/pipelines/${key}/boxes`);
+
+      // Build stages map
+      const stagesMap: Record<string, string> = {};
+      if (pipeline.stages) {
+        for (const stage of pipeline.stages) {
+          stagesMap[stage.key] = stage.name;
+        }
+      }
+
+      // Build partnership package map
+      const fieldMap: Record<string, string> = {
+        "9001": "Ultimate",
+        "9002": "Platinum", 
+        "9003": "Gold",
+        "9004": "Silver"
+      };
+
+      const apiKey = isNLPipeline(key) ? process.env.STREAK_API_KEY_NL : process.env.STREAK_API_KEY;
+
+      // Process each box and fetch contacts
+      const exportData: { 
+        partnerName: string; 
+        partnershipPackage: string; 
+        partnershipStage: string; 
+        contactEmails: string; 
+      }[] = [];
+
+      for (const box of boxes) {
+        // Get partnership package
+        let partnershipPackage = "";
+        if (box.fields?.["1001"]) {
+          const val = box.fields["1001"];
+          if (typeof val === "string" && fieldMap[val]) {
+            partnershipPackage = fieldMap[val];
+          }
+        }
+
+        // Get stage name
+        const stageName = box.stageKey ? (stagesMap[box.stageKey] || "") : "";
+
+        // Fetch contacts for this box using v2 API
+        const boxContactKeys = (box.contacts || []).map((c: any) => c.key).filter(Boolean);
+        const contactEmails: string[] = [];
+
+        for (const contactKey of boxContactKeys) {
+          try {
+            const contactData = await streakFetchV2(`/contacts/${contactKey}`, apiKey!);
+            const emails = contactData.emailAddresses || [];
+            if (emails[0]) {
+              contactEmails.push(emails[0]);
+            }
+          } catch (err) {
+            console.error(`Failed to fetch contact ${contactKey}:`, err);
+          }
+        }
+
+        exportData.push({
+          partnerName: box.name || "",
+          partnershipPackage,
+          partnershipStage: stageName,
+          contactEmails: contactEmails.join(", ")
+        });
+      }
+
+      // Create Excel workbook
+      const ws = XLSX.utils.json_to_sheet(exportData, {
+        header: ["partnerName", "partnershipPackage", "partnershipStage", "contactEmails"]
+      });
+      
+      // Set column headers
+      ws["A1"] = { v: "Partner Name", t: "s" };
+      ws["B1"] = { v: "Partnership Package", t: "s" };
+      ws["C1"] = { v: "Partnership Stage", t: "s" };
+      ws["D1"] = { v: "Partnership Contacts (Email)", t: "s" };
+
+      // Set column widths
+      ws["!cols"] = [
+        { wch: 30 },
+        { wch: 20 },
+        { wch: 20 },
+        { wch: 50 }
+      ];
+
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Partner Contacts");
+
+      // Generate buffer
+      const buffer = XLSX.write(wb, { type: "buffer", bookType: "xlsx" });
+
+      // Send file
+      const fileName = `partner-contacts-${pipeline.name?.replace(/\s+/g, '-') || key}.xlsx`;
+      res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+      res.setHeader("Content-Disposition", `attachment; filename="${fileName}"`);
+      res.send(buffer);
+    } catch (error: any) {
+      console.error(error);
+      res.status(500).json({ message: error.message || "Failed to export contacts" });
     }
   });
 
