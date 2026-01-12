@@ -194,21 +194,51 @@ export async function registerRoutes(
           box.fields["partnerPageLive"] = false;
         }
         
-        // Use emailAddresses from the box and filter out internal Techorama emails
-        const allEmails = box.emailAddresses || [];
-        const customerEmails = allEmails.filter((email: string) => 
-          email && 
-          !email.toLowerCase().includes('techorama.be') && 
-          !email.toLowerCase().includes('techorama.nl') &&
-          !email.toLowerCase().includes('mailer-daemon')
-        );
+        // Fetch linked contacts for this box using v1 API
+        const contacts: { name: string | null; email: string | null; phone: string | null }[] = [];
         
-        // Create contacts array from filtered emails
-        box.contacts = customerEmails.map((email: string) => ({
-          name: null,
-          email: email,
-          phone: null
-        }));
+        try {
+          const boxContacts = await fetcher(`/boxes/${box.key}/contacts`);
+          
+          // Process each linked contact
+          for (const contact of (boxContacts || [])) {
+            // Extract the primary email from emailAddresses array
+            const emailAddresses = contact.emailAddresses || [];
+            const primaryEmail = emailAddresses[0]?.emailAddress || null;
+            
+            // Build contact name from given and family names
+            const givenName = contact.givenName || '';
+            const familyName = contact.familyName || '';
+            const fullName = [givenName, familyName].filter(Boolean).join(' ') || null;
+            
+            if (primaryEmail) {
+              contacts.push({
+                name: fullName,
+                email: primaryEmail,
+                phone: null
+              });
+            }
+          }
+        } catch (err) {
+          // Box contacts fetch failed, fall back to emailAddresses
+          const allEmails = box.emailAddresses || [];
+          const customerEmails = allEmails.filter((email: string) => 
+            email && 
+            !email.toLowerCase().includes('techorama.be') && 
+            !email.toLowerCase().includes('techorama.nl') &&
+            !email.toLowerCase().includes('mailer-daemon')
+          );
+          
+          for (const email of customerEmails) {
+            contacts.push({
+              name: null,
+              email: email,
+              phone: null
+            });
+          }
+        }
+        
+        box.contacts = contacts;
         
         return box;
       }));
