@@ -182,7 +182,7 @@ export async function registerRoutes(
       }
       
       // Resolve numeric field references to actual values in each box
-      const resolvedBoxes = boxes.map((box: any) => {
+      const resolvedBoxes = await Promise.all(boxes.map(async (box: any) => {
         if (box.fields && box.fields["1001"] && fieldOptionMap[box.fields["1001"]]) {
           box.fields["1001_resolved"] = fieldOptionMap[box.fields["1001"]];
         }
@@ -193,8 +193,36 @@ export async function registerRoutes(
           box.fields = box.fields || {};
           box.fields["partnerPageLive"] = false;
         }
+        
+        // Fetch contacts for this box from Streak's contacts relationship
+        try {
+          const contactLinks = await fetcher(`/boxes/${box.key}/contacts`);
+          if (contactLinks && Array.isArray(contactLinks) && contactLinks.length > 0) {
+            // Fetch full contact details for each linked contact
+            const contactDetails = await Promise.all(
+              contactLinks.slice(0, 5).map(async (link: any) => {
+                try {
+                  const contact = await fetcher(`/contacts/${link.contactKey}`);
+                  return {
+                    name: contact.givenName && contact.familyName 
+                      ? `${contact.givenName} ${contact.familyName}`.trim()
+                      : contact.givenName || contact.familyName || null,
+                    email: contact.emailAddresses?.[0] || null,
+                    phone: contact.phoneNumbers?.[0] || null
+                  };
+                } catch {
+                  return null;
+                }
+              })
+            );
+            box.contacts = contactDetails.filter((c: any) => c && (c.email || c.name));
+          }
+        } catch {
+          // Contacts fetch failed, continue without them
+        }
+        
         return box;
-      });
+      }));
       
       res.json(resolvedBoxes);
     } catch (error: any) {
