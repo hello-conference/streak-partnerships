@@ -35,6 +35,8 @@ export function usePipelineBoxes(key: string | null, options?: { enabled?: boole
   return useQuery({
     queryKey: [api.pipelines.getBoxes.path, key],
     enabled: isEnabled,
+    staleTime: 0,
+    refetchOnMount: 'always',
     queryFn: async () => {
       if (!key) throw new Error("Key is required");
       const url = buildUrl(api.pipelines.getBoxes.path, { key });
