@@ -333,7 +333,7 @@ export function BoxList({ boxes, pipeline, prevYearStats = {} }: BoxListProps) {
                                   </div>
                                 </div>
                                 
-                                {/* Contacts - Always show linked contacts from Streak */}
+                                {/* Contact Emails */}
                                 {(() => {
                                   const contacts = (box as any).contacts || [];
                                   
@@ -343,15 +343,13 @@ export function BoxList({ boxes, pipeline, prevYearStats = {} }: BoxListProps) {
                                     <div className="flex items-start gap-2 pt-1 border-t border-border/30">
                                       <Mail className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0 mt-0.5" />
                                       <div className="text-xs text-muted-foreground space-y-0.5 flex-1 min-w-0">
-                                        {contacts.slice(0, 3).map((contact: any, idx: number) => (
+                                        {contacts.slice(0, 2).map((contact: any, idx: number) => (
                                           <div key={idx} className="truncate">
-                                            {contact.name && contact.email 
-                                              ? `${contact.name} - ${contact.email}` 
-                                              : contact.email || contact.name}
+                                            {contact.email}
                                           </div>
                                         ))}
-                                        {contacts.length > 3 && (
-                                          <div className="text-muted-foreground/70">+{contacts.length - 3} more</div>
+                                        {contacts.length > 2 && (
+                                          <div className="text-muted-foreground/70">+{contacts.length - 2} more</div>
                                         )}
                                       </div>
                                     </div>
@@ -398,7 +396,7 @@ export function BoxList({ boxes, pipeline, prevYearStats = {} }: BoxListProps) {
                                 )}
                               </div>
                               
-                              {/* Contacts - Always show linked contacts from Streak */}
+                              {/* Contact Emails */}
                               {(() => {
                                 const contacts = (box as any).contacts || [];
                                 
@@ -408,15 +406,13 @@ export function BoxList({ boxes, pipeline, prevYearStats = {} }: BoxListProps) {
                                   <div className="flex items-start gap-2 pt-1 border-t border-border/30">
                                     <Mail className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0 mt-0.5" />
                                     <div className="text-xs text-muted-foreground space-y-0.5 flex-1 min-w-0">
-                                      {contacts.slice(0, 3).map((contact: any, idx: number) => (
+                                      {contacts.slice(0, 2).map((contact: any, idx: number) => (
                                         <div key={idx} className="truncate">
-                                          {contact.name && contact.email 
-                                            ? `${contact.name} - ${contact.email}` 
-                                            : contact.email || contact.name}
+                                          {contact.email}
                                         </div>
                                       ))}
-                                      {contacts.length > 3 && (
-                                        <div className="text-muted-foreground/70">+{contacts.length - 3} more</div>
+                                      {contacts.length > 2 && (
+                                        <div className="text-muted-foreground/70">+{contacts.length - 2} more</div>
                                       )}
                                     </div>
                                   </div>

@@ -194,42 +194,21 @@ export async function registerRoutes(
           box.fields["partnerPageLive"] = false;
         }
         
-        // Fetch contacts for this box from Streak's contacts relationship
-        try {
-          const contactLinks = await fetcher(`/boxes/${box.key}/contacts`);
-          if (contactLinks && Array.isArray(contactLinks) && contactLinks.length > 0) {
-            // Fetch full contact details for each linked contact (all of them)
-            const contactDetails = await Promise.all(
-              contactLinks.map(async (link: any) => {
-                try {
-                  const contact = await fetcher(`/contacts/${link.contactKey}`);
-                  // Get the best name and all emails
-                  const fullName = contact.givenName && contact.familyName 
-                    ? `${contact.givenName} ${contact.familyName}`.trim()
-                    : contact.givenName || contact.familyName || null;
-                  
-                  // Get primary email (first non-internal one)
-                  const emails = contact.emailAddresses || [];
-                  const primaryEmail = emails.find((e: string) => 
-                    !e.toLowerCase().includes('techorama.be') && 
-                    !e.toLowerCase().includes('techorama.nl')
-                  ) || emails[0] || null;
-                  
-                  return {
-                    name: fullName,
-                    email: primaryEmail,
-                    phone: contact.phoneNumbers?.[0] || null
-                  };
-                } catch {
-                  return null;
-                }
-              })
-            );
-            box.contacts = contactDetails.filter((c: any) => c && (c.email || c.name));
-          }
-        } catch {
-          // Contacts fetch failed, continue without them
-        }
+        // Use emailAddresses from the box and filter out internal Techorama emails
+        const allEmails = box.emailAddresses || [];
+        const customerEmails = allEmails.filter((email: string) => 
+          email && 
+          !email.toLowerCase().includes('techorama.be') && 
+          !email.toLowerCase().includes('techorama.nl') &&
+          !email.toLowerCase().includes('mailer-daemon')
+        );
+        
+        // Create contacts array from filtered emails
+        box.contacts = customerEmails.map((email: string) => ({
+          name: null,
+          email: email,
+          phone: null
+        }));
         
         return box;
       }));
