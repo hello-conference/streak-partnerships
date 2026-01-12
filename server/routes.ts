@@ -98,6 +98,25 @@ export async function registerRoutes(
     return streakFetchWithKey(path, apiKey);
   }
 
+  // Helper to fetch from Streak v2 API (for contacts)
+  async function streakFetchV2(path: string, apiKey: string) {
+    const auth = Buffer.from(`${apiKey}:`).toString('base64');
+    
+    const response = await fetch(`https://api.streak.com/api/v2${path}`, {
+      headers: {
+        'Authorization': `Basic ${auth}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(`Streak API v2 returned ${response.status}: ${text}`);
+    }
+
+    return response.json();
+  }
+
   // Determine which API key to use based on pipeline key
   function getStreakFetcher(pipelineKey: string) {
     return isNLPipeline(pipelineKey) ? streakFetchNL : streakFetch;
@@ -194,47 +213,35 @@ export async function registerRoutes(
           box.fields["partnerPageLive"] = false;
         }
         
-        // Fetch linked contacts for this box using v1 API
+        // Fetch linked contacts from the box's contacts array using v2 API
         const contacts: { name: string | null; email: string | null; phone: string | null }[] = [];
+        const apiKey = isNLPipeline(key) ? process.env.STREAK_API_KEY_NL : process.env.STREAK_API_KEY;
         
-        try {
-          const boxContacts = await fetcher(`/boxes/${box.key}/contacts`);
-          
-          // Process each linked contact
-          for (const contact of (boxContacts || [])) {
-            // Extract the primary email from emailAddresses array
-            const emailAddresses = contact.emailAddresses || [];
-            const primaryEmail = emailAddresses[0]?.emailAddress || null;
+        // The box.contacts array contains contact keys that need to be fetched via v2 API
+        const boxContactKeys = (box.contacts || []).map((c: any) => c.key).filter(Boolean);
+        
+        for (const contactKey of boxContactKeys) {
+          try {
+            const contactData = await streakFetchV2(`/contacts/${contactKey}`, apiKey!);
+            
+            // Extract email from emailAddresses array
+            const emails = contactData.emailAddresses || [];
+            const primaryEmail = emails[0] || null;
             
             // Build contact name from given and family names
-            const givenName = contact.givenName || '';
-            const familyName = contact.familyName || '';
+            const givenName = contactData.givenName || '';
+            const familyName = contactData.familyName || '';
             const fullName = [givenName, familyName].filter(Boolean).join(' ') || null;
             
             if (primaryEmail) {
               contacts.push({
                 name: fullName,
                 email: primaryEmail,
-                phone: null
+                phone: contactData.phoneNumbers?.[0] || null
               });
             }
-          }
-        } catch (err) {
-          // Box contacts fetch failed, fall back to emailAddresses
-          const allEmails = box.emailAddresses || [];
-          const customerEmails = allEmails.filter((email: string) => 
-            email && 
-            !email.toLowerCase().includes('techorama.be') && 
-            !email.toLowerCase().includes('techorama.nl') &&
-            !email.toLowerCase().includes('mailer-daemon')
-          );
-          
-          for (const email of customerEmails) {
-            contacts.push({
-              name: null,
-              email: email,
-              phone: null
-            });
+          } catch (err) {
+            console.error(`Failed to fetch contact ${contactKey}:`, err);
           }
         }
         
