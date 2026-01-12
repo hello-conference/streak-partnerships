@@ -373,11 +373,17 @@ export async function registerRoutes(
       const pipeline = await fetcher(`/pipelines/${key}`);
       const boxes = await fetcher(`/pipelines/${key}/boxes`);
 
-      // Build stages map
+      // Build stages map - stages can be an array or an object
       const stagesMap: Record<string, string> = {};
       if (pipeline.stages) {
-        for (const stage of pipeline.stages) {
-          stagesMap[stage.key] = stage.name;
+        if (Array.isArray(pipeline.stages)) {
+          for (const stage of pipeline.stages) {
+            stagesMap[stage.key] = stage.name;
+          }
+        } else if (typeof pipeline.stages === 'object') {
+          for (const [stageKey, stage] of Object.entries(pipeline.stages)) {
+            stagesMap[stageKey] = (stage as any).name || stageKey;
+          }
         }
       }
 
