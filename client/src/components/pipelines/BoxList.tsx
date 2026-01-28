@@ -234,6 +234,16 @@ export function BoxList({ boxes, pipeline, prevYearStats = {} }: BoxListProps) {
                     
                     const prevPartnershipStats = prevYearStats[partnership];
                     
+                    // Find the last added partner (most recent by creation timestamp, fallback to lastUpdated)
+                    const lastAddedBox = partnershipBoxes.reduce((latest, box) => {
+                      const boxObj = box as any;
+                      const boxTimestamp = boxObj.creationTimestamp || boxObj.lastUpdatedTimestamp || 0;
+                      const latestTimestamp = (latest as any)?.creationTimestamp || (latest as any)?.lastUpdatedTimestamp || 0;
+                      return boxTimestamp > latestTimestamp ? box : latest;
+                    }, partnershipBoxes[0]);
+                    
+                    const lastAddedTimestamp = (lastAddedBox as any)?.creationTimestamp || (lastAddedBox as any)?.lastUpdatedTimestamp;
+                    
                     return (
                     <div key={partnership} className={`${getPartnershipColor(partnership)}`}>
                       <button
@@ -249,9 +259,19 @@ export function BoxList({ boxes, pipeline, prevYearStats = {} }: BoxListProps) {
                               isPartnershipExpanded ? "rotate-180" : ""
                             }`}
                           />
-                          <h4 className="text-sm font-medium text-foreground font-semibold">
-                            {partnership} ({partnershipBoxes.length})
-                          </h4>
+                          <div>
+                            <h4 className="text-sm font-medium text-foreground font-semibold text-left">
+                              {partnership} ({partnershipBoxes.length})
+                            </h4>
+                            {lastAddedBox && (
+                              <p className="text-xs text-muted-foreground text-left">
+                                Last added: {lastAddedBox.name}
+                                {lastAddedTimestamp && (
+                                  <span className="ml-1">({format(lastAddedTimestamp, "MMM d, yyyy")})</span>
+                                )}
+                              </p>
+                            )}
+                          </div>
                         </div>
                         <div className="flex flex-col items-end gap-0.5">
                           <div className="text-sm font-semibold text-primary">
