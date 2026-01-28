@@ -137,8 +137,8 @@ export default function PipelineDetail() {
         totalConfirmedRevenue += price;
       }
       
-      // Track last added partner
-      const boxTimestamp = box.creationTimestamp || box.lastUpdatedTimestamp || 0;
+      // Track last added partner (use lastUpdatedTimestamp as it reflects when box moved to current stage)
+      const boxTimestamp = box.lastUpdatedTimestamp || box.creationTimestamp || 0;
       if (!confirmedStats[partnership].lastAdded || boxTimestamp > confirmedStats[partnership].lastAdded.timestamp) {
         confirmedStats[partnership].lastAdded = {
           name: box.name,

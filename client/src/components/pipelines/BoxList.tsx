@@ -234,15 +234,15 @@ export function BoxList({ boxes, pipeline, prevYearStats = {} }: BoxListProps) {
                     
                     const prevPartnershipStats = prevYearStats[partnership];
                     
-                    // Find the last added partner (most recent by creation timestamp, fallback to lastUpdated)
+                    // Find the last added partner (most recent by lastUpdatedTimestamp, which reflects stage changes)
                     const lastAddedBox = partnershipBoxes.reduce((latest, box) => {
                       const boxObj = box as any;
-                      const boxTimestamp = boxObj.creationTimestamp || boxObj.lastUpdatedTimestamp || 0;
-                      const latestTimestamp = (latest as any)?.creationTimestamp || (latest as any)?.lastUpdatedTimestamp || 0;
+                      const boxTimestamp = boxObj.lastUpdatedTimestamp || boxObj.creationTimestamp || 0;
+                      const latestTimestamp = (latest as any)?.lastUpdatedTimestamp || (latest as any)?.creationTimestamp || 0;
                       return boxTimestamp > latestTimestamp ? box : latest;
                     }, partnershipBoxes[0]);
                     
-                    const lastAddedTimestamp = (lastAddedBox as any)?.creationTimestamp || (lastAddedBox as any)?.lastUpdatedTimestamp;
+                    const lastAddedTimestamp = (lastAddedBox as any)?.lastUpdatedTimestamp || (lastAddedBox as any)?.creationTimestamp;
                     
                     return (
                     <div key={partnership} className={`${getPartnershipColor(partnership)}`}>
