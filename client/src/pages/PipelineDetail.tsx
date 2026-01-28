@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { useState, useMemo } from "react";
 import { Card } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import { format } from "date-fns";
 
 function CountryFlag({ country }: { country: "BE" | "NL" }) {
   if (country === "BE") {
@@ -120,7 +121,7 @@ export default function PipelineDetail() {
   };
 
   // Calculate confirmed partnerships stats
-  const confirmedStats: Record<string, { count: number; total: number }> = {};
+  const confirmedStats: Record<string, { count: number; total: number; lastAdded?: { name: string; timestamp: number } }> = {};
   let totalConfirmedRevenue = 0;
 
   filteredBoxes.forEach((box: any) => {
@@ -134,6 +135,15 @@ export default function PipelineDetail() {
       if (price) {
         confirmedStats[partnership].total += price;
         totalConfirmedRevenue += price;
+      }
+      
+      // Track last added partner
+      const boxTimestamp = box.creationTimestamp || box.lastUpdatedTimestamp || 0;
+      if (!confirmedStats[partnership].lastAdded || boxTimestamp > confirmedStats[partnership].lastAdded.timestamp) {
+        confirmedStats[partnership].lastAdded = {
+          name: box.name,
+          timestamp: boxTimestamp
+        };
       }
     }
   });
@@ -243,6 +253,20 @@ export default function PipelineDetail() {
                         </div>
                       )}
                     </div>
+                    
+                    {/* Last Added Partner */}
+                    {stats.lastAdded && (
+                      <div className="text-xs text-muted-foreground mt-2 pt-2 border-t border-border/30">
+                        <div className="truncate" title={stats.lastAdded.name}>
+                          Last: {stats.lastAdded.name}
+                        </div>
+                        {stats.lastAdded.timestamp > 0 && (
+                          <div className="text-muted-foreground/70">
+                            {format(stats.lastAdded.timestamp, "MMM d, yyyy")}
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </Card>
                 );
               })}
