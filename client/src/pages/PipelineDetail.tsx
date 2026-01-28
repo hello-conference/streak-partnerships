@@ -254,11 +254,11 @@ export default function PipelineDetail() {
                       )}
                     </div>
                     
-                    {/* Last Added Partner */}
+                    {/* Last Updated Partner */}
                     {stats.lastAdded && (
                       <div className="text-xs text-muted-foreground mt-2 pt-2 border-t border-border/30">
                         <div className="truncate" title={stats.lastAdded.name}>
-                          Last: {stats.lastAdded.name}
+                          Last updated: {stats.lastAdded.name}
                         </div>
                         {stats.lastAdded.timestamp > 0 && (
                           <div className="text-muted-foreground/70">

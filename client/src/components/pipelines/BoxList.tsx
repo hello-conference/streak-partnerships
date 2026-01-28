@@ -265,7 +265,7 @@ export function BoxList({ boxes, pipeline, prevYearStats = {} }: BoxListProps) {
                             </h4>
                             {lastAddedBox && (
                               <p className="text-xs text-muted-foreground text-left">
-                                Last added: {lastAddedBox.name}
+                                Last updated: {lastAddedBox.name}
                                 {lastAddedTimestamp && (
                                   <span className="ml-1">({format(lastAddedTimestamp, "MMM d, yyyy")})</span>
                                 )}
