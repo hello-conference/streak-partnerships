@@ -533,6 +533,44 @@ export async function registerRoutes(
     }
   });
 
+  app.post(api.pretix.createMissingExhibitors.path, isAuthenticated, isDomainAllowed, async (req: any, res) => {
+    try {
+      const { partners } = req.body;
+      if (!partners || !Array.isArray(partners) || partners.length === 0) {
+        return res.status(400).json({ message: "partners array is required" });
+      }
+      const existingExhibitors = await listExhibitors();
+      const existingNames = new Set(existingExhibitors.map((e: any) => e.name?.toLowerCase()));
+
+      const results: any[] = [];
+      const errors: any[] = [];
+
+      for (const partner of partners) {
+        const { name, partnershipLevel } = partner;
+        if (existingNames.has(name.toLowerCase())) {
+          continue;
+        }
+        if (!VOUCHER_ALLOCATIONS[partnershipLevel]) {
+          errors.push({ name, error: `Invalid partnership level: ${partnershipLevel}` });
+          continue;
+        }
+        try {
+          const exhibitor = await createExhibitor(name);
+          const vouchers = await createVouchersForExhibitor(exhibitor.id, name, partnershipLevel);
+          results.push({ name, exhibitor: { ...exhibitor, vouchers } });
+          existingNames.add(name.toLowerCase());
+        } catch (err: any) {
+          errors.push({ name, error: err.message || "Failed to create" });
+        }
+      }
+
+      res.json({ created: results, errors, skipped: partners.length - results.length - errors.length });
+    } catch (error: any) {
+      console.error(error);
+      res.status(500).json({ message: error.message || "Failed to batch create exhibitors" });
+    }
+  });
+
   app.post(api.pretix.createExhibitor.path, isAuthenticated, isDomainAllowed, async (req: any, res) => {
     try {
       const { name, partnershipLevel } = req.body;

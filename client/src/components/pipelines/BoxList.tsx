@@ -8,7 +8,7 @@ import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { buildUrl, api } from "@shared/routes";
-import { useExhibitors, useCreateExhibitor } from "@/hooks/use-pretix";
+import { useExhibitors, useCreateExhibitor, useCreateMissingExhibitors } from "@/hooks/use-pretix";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -41,6 +41,7 @@ export function BoxList({ boxes, pipeline, prevYearStats = {} }: BoxListProps) {
 
   const { data: exhibitors, isLoading: exhibitorsLoading } = useExhibitors();
   const createExhibitorMutation = useCreateExhibitor();
+  const createMissingMutation = useCreateMissingExhibitors();
   const { toast } = useToast();
 
   const [createConfirmDialog, setCreateConfirmDialog] = useState<{
@@ -583,6 +584,52 @@ export function BoxList({ boxes, pipeline, prevYearStats = {} }: BoxListProps) {
           </div>
         );
       })}
+
+      {/* Create Missing Exhibitors button */}
+      {exhibitors && (() => {
+        const missingPartners: { name: string; partnershipLevel: string }[] = [];
+        Object.entries(confirmedBoxes).forEach(([partnership, partnershipBoxes]) => {
+          for (const box of partnershipBoxes) {
+            if (!findExhibitor(box.name)) {
+              missingPartners.push({ name: box.name, partnershipLevel: partnership });
+            }
+          }
+        });
+        if (missingPartners.length === 0) return null;
+        return (
+          <div className="flex justify-center pt-2">
+            <Button
+              variant="outline"
+              className="gap-2"
+              disabled={createMissingMutation.isPending}
+              data-testid="button-create-missing-exhibitors"
+              onClick={() => {
+                createMissingMutation.mutate({ partners: missingPartners }, {
+                  onSuccess: (data: any) => {
+                    toast({
+                      title: "Batch creation complete",
+                      description: `Created ${data.created?.length || 0} exhibitors. ${data.errors?.length ? `${data.errors.length} failed.` : ""} ${data.skipped ? `${data.skipped} already existed.` : ""}`.trim(),
+                    });
+                  },
+                  onError: (error: any) => {
+                    toast({
+                      title: "Batch creation failed",
+                      description: error.message || "An unexpected error occurred.",
+                      variant: "destructive",
+                    });
+                  }
+                });
+              }}
+            >
+              {createMissingMutation.isPending ? (
+                <><Loader2 className="w-4 h-4 animate-spin" /> Creating exhibitors...</>
+              ) : (
+                <><Ticket className="w-4 h-4" /> Create missing exhibitors and vouchers ({missingPartners.length})</>
+              )}
+            </Button>
+          </div>
+        );
+      })()}
 
       {/* Confirmation Dialog for toggling Partner Page Live status */}
       <AlertDialog open={confirmDialog.open} onOpenChange={(open) => {

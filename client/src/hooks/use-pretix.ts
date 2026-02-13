@@ -83,3 +83,16 @@ export function useCreateExhibitor() {
     },
   });
 }
+
+export function useCreateMissingExhibitors() {
+  return useMutation({
+    mutationFn: async (data: { partners: { name: string; partnershipLevel: string }[] }) => {
+      const res = await apiRequest("POST", api.pretix.createMissingExhibitors.path, data);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/pretix/exhibitors'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/pretix/exhibitors/by-name'] });
+    },
+  });
+}
