@@ -414,8 +414,11 @@ export function BoxList({ boxes, pipeline, prevYearStats = {} }: BoxListProps) {
                                     );
                                   }
                                   if (exhibitor) {
+                                    const ft = exhibitor.freeTotal || 0;
+                                    const fc = exhibitor.freeClaimed || 0;
+                                    const hasMissing = ft > 0 && fc < ft;
                                     return (
-                                      <div className="flex items-center gap-2 pt-1 border-t border-border/30">
+                                      <div className="flex items-center justify-between gap-2 pt-1 border-t border-border/30">
                                         <Link
                                           href={`/pipelines/${pipeline.key}/exhibitors/${exhibitor.id}?level=${encodeURIComponent(partnership)}`}
                                           className="flex items-center gap-1.5 text-xs text-green-600 dark:text-green-400 hover:underline"
@@ -425,6 +428,11 @@ export function BoxList({ boxes, pipeline, prevYearStats = {} }: BoxListProps) {
                                           Exhibitor in Pretix
                                           <ExternalLink className="w-3 h-3" />
                                         </Link>
+                                        {ft > 0 && (
+                                          <span className={`text-xs ${hasMissing ? "text-amber-600 dark:text-amber-400" : "text-green-600 dark:text-green-400"}`} data-testid={`text-free-tickets-${box.key}`}>
+                                            {fc}/{ft} free
+                                          </span>
+                                        )}
                                       </div>
                                     );
                                   }
