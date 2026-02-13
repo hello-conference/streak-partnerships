@@ -15,7 +15,7 @@ function AuthenticatedRouter() {
     <Switch>
       <Route path="/" component={Dashboard} />
       <Route path="/pipelines/:key" component={PipelineDetail} />
-      <Route path="/exhibitors/:id" component={ExhibitorDetail} />
+      <Route path="/pipelines/:pipelineKey/exhibitors/:id" component={ExhibitorDetail} />
       <Route component={NotFound} />
     </Switch>
   );

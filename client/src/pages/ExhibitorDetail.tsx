@@ -1,35 +1,52 @@
 import { Shell } from "@/components/layout/Shell";
 import { useRoute } from "wouter";
 import { Link } from "wouter";
-import { useExhibitorById } from "@/hooks/use-pretix";
+import { useExhibitorById, usePretixItems } from "@/hooks/use-pretix";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ChevronLeft, Ticket, Copy, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 
-const FREE_ITEM_ID = 907413;
-const PARTNER_ITEM_ID = 907414;
-
-function getTicketTypeName(itemId: number): string {
-  if (itemId === FREE_ITEM_ID) return "Free (2-day conference, May 12-13)";
-  if (itemId === PARTNER_ITEM_ID) return "Partner (2-day conference, May 12-13)";
-  return "Unknown";
+function getItemName(itemId: number | null, itemsMap: Record<number, string>): string {
+  if (!itemId) return "General";
+  return itemsMap[itemId] || `Item #${itemId}`;
 }
 
-function getTicketTypeLabel(itemId: number): string {
-  if (itemId === FREE_ITEM_ID) return "Free";
-  if (itemId === PARTNER_ITEM_ID) return "Partner";
-  return "Other";
+function getItemBadgeLabel(itemId: number | null, itemsMap: Record<number, string>): string {
+  if (!itemId) return "General";
+  const name = itemsMap[itemId];
+  if (!name) return `#${itemId}`;
+  const lower = name.toLowerCase();
+  if (lower.includes("free")) return "Free";
+  if (lower.includes("partner")) return "Partner";
+  if (lower.includes("knight")) return "Knight";
+  const words = name.split(/[\s-]+/);
+  return words.length > 2 ? words.slice(0, 2).join(" ") : name;
 }
 
 export default function ExhibitorDetail() {
-  const [, params] = useRoute("/exhibitors/:id");
+  const [, params] = useRoute("/pipelines/:pipelineKey/exhibitors/:id");
   const exhibitorId = params?.id ? parseInt(params.id) : null;
+  const pipelineKey = params?.pipelineKey || "";
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
 
   const { data: exhibitor, isLoading, error } = useExhibitorById(exhibitorId);
+  const { data: items } = usePretixItems();
+
+  const itemsMap = useMemo(() => {
+    const map: Record<number, string> = {};
+    if (items) {
+      for (const item of items) {
+        const name = typeof item.name === "object"
+          ? (item.name.en || Object.values(item.name)[0] || `Item #${item.id}`)
+          : (item.name || `Item #${item.id}`);
+        map[item.id] = name as string;
+      }
+    }
+    return map;
+  }, [items]);
 
   const copyToClipboard = (code: string) => {
     navigator.clipboard.writeText(code);
@@ -45,13 +62,16 @@ export default function ExhibitorDetail() {
     );
   }
 
+  const backLink = pipelineKey ? `/pipelines/${pipelineKey}` : "/";
+  const backLabel = pipelineKey ? "Back to Pipeline" : "Back to Dashboard";
+
   if (error || !exhibitor) {
     return (
       <Shell>
         <div className="text-center py-12">
           <p className="text-destructive">Failed to load exhibitor details.</p>
-          <Link href="/" className="text-sm text-muted-foreground hover:text-foreground mt-2 inline-block">
-            Back to Dashboard
+          <Link href={backLink} className="text-sm text-muted-foreground hover:text-foreground mt-2 inline-block">
+            {backLabel}
           </Link>
         </div>
       </Shell>
@@ -59,19 +79,16 @@ export default function ExhibitorDetail() {
   }
 
   const vouchers = exhibitor.vouchers || [];
-  const freeVouchers = vouchers.filter((v: any) => v.item === FREE_ITEM_ID);
-  const partnerVouchers = vouchers.filter((v: any) => v.item === PARTNER_ITEM_ID);
-  const allVouchers = [...freeVouchers, ...partnerVouchers];
 
-  const totalMaxUsages = allVouchers.reduce((sum: number, v: any) => sum + (v.max_usages || 0), 0);
-  const totalRedeemed = allVouchers.reduce((sum: number, v: any) => sum + (v.redeemed || 0), 0);
+  const totalMaxUsages = vouchers.reduce((sum: number, v: any) => sum + (v.max_usages || 0), 0);
+  const totalRedeemed = vouchers.reduce((sum: number, v: any) => sum + (v.redeemed || 0), 0);
 
   return (
     <Shell>
       <div className="flex flex-col gap-6">
-        <Link href="/" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors w-fit" data-testid="link-back-dashboard">
+        <Link href={backLink} className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors w-fit" data-testid="link-back-pipeline">
           <ChevronLeft className="w-4 h-4" />
-          Back to Dashboard
+          {backLabel}
         </Link>
 
         <div>
@@ -90,11 +107,10 @@ export default function ExhibitorDetail() {
           )}
         </div>
 
-        {/* Summary Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <Card className="p-4">
             <div className="text-xs font-medium text-muted-foreground mb-1">Total Vouchers</div>
-            <div className="text-2xl font-bold text-foreground" data-testid="text-total-vouchers">{allVouchers.length}</div>
+            <div className="text-2xl font-bold text-foreground" data-testid="text-total-vouchers">{vouchers.length}</div>
           </Card>
           <Card className="p-4">
             <div className="text-xs font-medium text-muted-foreground mb-1">Tickets Available</div>
@@ -111,21 +127,27 @@ export default function ExhibitorDetail() {
           </Card>
         </div>
 
-        {/* Voucher Details */}
         <div className="space-y-4">
           <h2 className="text-lg font-semibold text-foreground">Voucher Details</h2>
 
-          {allVouchers.length === 0 ? (
+          {vouchers.length === 0 ? (
             <Card className="p-6 text-center">
               <p className="text-muted-foreground">No vouchers found for this exhibitor.</p>
             </Card>
           ) : (
             <div className="space-y-3">
-              {allVouchers.map((voucher: any) => {
+              {vouchers.map((voucher: any) => {
                 const claimed = voucher.redeemed || 0;
                 const total = voucher.max_usages || 0;
                 const percentage = total > 0 ? (claimed / total) * 100 : 0;
                 const isCopied = copiedCode === voucher.code;
+                const itemName = getItemName(voucher.item, itemsMap);
+                const badgeLabel = getItemBadgeLabel(voucher.item, itemsMap);
+                const priceInfo = voucher.price_mode === "set" && voucher.value
+                  ? (parseFloat(voucher.value) === 0 ? "Free" : `${voucher.value}`)
+                  : voucher.price_mode === "percent" && voucher.value
+                  ? `${voucher.value}% off`
+                  : null;
 
                 return (
                   <Card key={voucher.id} className="p-4" data-testid={`card-voucher-${voucher.id}`}>
@@ -133,11 +155,16 @@ export default function ExhibitorDetail() {
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                         <div className="flex items-center gap-2 flex-wrap">
                           <Badge variant="secondary" className="text-xs" data-testid={`badge-ticket-type-${voucher.id}`}>
-                            {getTicketTypeLabel(voucher.item)}
+                            {badgeLabel}
                           </Badge>
                           <span className="text-sm font-medium text-foreground">
-                            {getTicketTypeName(voucher.item)}
+                            {itemName}
                           </span>
+                          {priceInfo && priceInfo !== "Free" && (
+                            <span className="text-xs text-muted-foreground">
+                              ({priceInfo})
+                            </span>
+                          )}
                         </div>
                         <div className="flex items-center gap-2">
                           <code className="text-xs bg-muted px-2 py-1 rounded font-mono" data-testid={`text-voucher-code-${voucher.id}`}>
@@ -158,7 +185,6 @@ export default function ExhibitorDetail() {
                         </div>
                       </div>
 
-                      {/* Usage Progress */}
                       <div>
                         <div className="flex items-center justify-between mb-1">
                           <span className="text-xs text-muted-foreground">
@@ -183,10 +209,12 @@ export default function ExhibitorDetail() {
                         </div>
                       </div>
 
-                      {/* Voucher Meta */}
                       <div className="flex flex-wrap gap-4 text-xs text-muted-foreground">
                         {voucher.comment && (
                           <span>{voucher.comment}</span>
+                        )}
+                        {voucher.exhibitor_comment && !voucher.comment && (
+                          <span>{voucher.exhibitor_comment}</span>
                         )}
                         {voucher.valid_until && (
                           <span>Expires: {new Date(voucher.valid_until).toLocaleDateString()}</span>

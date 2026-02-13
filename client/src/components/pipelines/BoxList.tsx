@@ -417,7 +417,7 @@ export function BoxList({ boxes, pipeline, prevYearStats = {} }: BoxListProps) {
                                     return (
                                       <div className="flex items-center gap-2 pt-1 border-t border-border/30">
                                         <Link
-                                          href={`/exhibitors/${exhibitor.id}`}
+                                          href={`/pipelines/${pipeline.key}/exhibitors/${exhibitor.id}`}
                                           className="flex items-center gap-1.5 text-xs text-green-600 dark:text-green-400 hover:underline"
                                           data-testid={`link-exhibitor-${box.key}`}
                                         >

@@ -133,13 +133,17 @@ export async function createVouchersForExhibitor(
   return vouchers;
 }
 
+export async function getVoucherById(voucherId: number): Promise<any> {
+  return pretixFetch(`/organizers/${ORGANIZER}/events/${EVENT}/vouchers/${voucherId}/`);
+}
+
 export async function getExhibitorVouchers(exhibitorId: number): Promise<any[]> {
-  const allVouchers: any[] = [];
+  const linkedVouchers: any[] = [];
   let url = `/organizers/${ORGANIZER}/events/${EVENT}/exhibitors/${exhibitorId}/vouchers/`;
 
   while (url) {
     const data = await pretixFetch(url);
-    allVouchers.push(...(data.results || []));
+    linkedVouchers.push(...(data.results || []));
     if (data.next) {
       const nextUrl = new URL(data.next);
       url = nextUrl.pathname + nextUrl.search;
@@ -148,7 +152,36 @@ export async function getExhibitorVouchers(exhibitorId: number): Promise<any[]> 
     }
   }
 
-  return allVouchers;
+  const fullVouchers = await Promise.all(
+    linkedVouchers.map(async (stub: any) => {
+      try {
+        const full = await getVoucherById(stub.id);
+        return { ...full, exhibitor_comment: stub.exhibitor_comment };
+      } catch {
+        return stub;
+      }
+    })
+  );
+
+  return fullVouchers;
+}
+
+export async function listItems(): Promise<any[]> {
+  const allItems: any[] = [];
+  let url = `/organizers/${ORGANIZER}/events/${EVENT}/items/`;
+
+  while (url) {
+    const data = await pretixFetch(url);
+    allItems.push(...(data.results || []));
+    if (data.next) {
+      const nextUrl = new URL(data.next);
+      url = nextUrl.pathname + nextUrl.search;
+    } else {
+      url = "";
+    }
+  }
+
+  return allItems;
 }
 
 export async function findExhibitorByName(name: string): Promise<any | null> {

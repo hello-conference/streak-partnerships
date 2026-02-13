@@ -30,6 +30,18 @@ export function useExhibitorByName(name: string | null) {
   });
 }
 
+export function usePretixItems() {
+  return useQuery({
+    queryKey: ['/api/pretix/items'],
+    staleTime: 5 * 60 * 1000,
+    queryFn: async () => {
+      const res = await fetch(api.pretix.getItems.path, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch items");
+      return res.json();
+    },
+  });
+}
+
 export function useExhibitorById(exhibitorId: number | null) {
   return useQuery({
     queryKey: ['/api/pretix/exhibitors', exhibitorId],

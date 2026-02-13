@@ -92,6 +92,11 @@ export const api = {
       path: '/api/pretix/exhibitors/:id/vouchers',
       responses: { 200: z.any(), 500: errorSchemas.internal },
     },
+    getItems: {
+      method: 'GET' as const,
+      path: '/api/pretix/items',
+      responses: { 200: z.array(z.any()), 500: errorSchemas.internal },
+    },
   }
 };
 

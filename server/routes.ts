@@ -5,7 +5,7 @@ import { api } from "@shared/routes";
 import { z } from "zod";
 import { setupAuth, registerAuthRoutes, isAuthenticated } from "./replit_integrations/auth";
 import * as XLSX from "xlsx";
-import { listExhibitors, findExhibitorByName, createExhibitor, createVouchersForExhibitor, getExhibitor, getExhibitorVouchers, VOUCHER_ALLOCATIONS } from "./pretix";
+import { listExhibitors, findExhibitorByName, createExhibitor, createVouchersForExhibitor, getExhibitor, getExhibitorVouchers, listItems, VOUCHER_ALLOCATIONS } from "./pretix";
 
 const STREAK_API_BASE = "https://www.streak.com/api/v1";
 
@@ -531,6 +531,16 @@ export async function registerRoutes(
     } catch (error: any) {
       console.error(error);
       res.status(500).json({ message: error.message || "Failed to fetch exhibitor vouchers" });
+    }
+  });
+
+  app.get(api.pretix.getItems.path, isAuthenticated, isDomainAllowed, async (req: any, res) => {
+    try {
+      const items = await listItems();
+      res.json(items);
+    } catch (error: any) {
+      console.error(error);
+      res.status(500).json({ message: error.message || "Failed to fetch items" });
     }
   });
 
