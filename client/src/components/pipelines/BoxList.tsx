@@ -416,7 +416,9 @@ export function BoxList({ boxes, pipeline, prevYearStats = {} }: BoxListProps) {
                                   if (exhibitor) {
                                     const ft = exhibitor.freeTotal || 0;
                                     const fc = exhibitor.freeClaimed || 0;
-                                    const hasMissing = ft > 0 && fc < ft;
+                                    const pt = exhibitor.paidTotal || 0;
+                                    const pc = exhibitor.paidClaimed || 0;
+                                    const freeMissing = ft > 0 && fc < ft;
                                     return (
                                       <div className="flex items-center justify-between gap-2 pt-1 border-t border-border/30">
                                         <Link
@@ -428,11 +430,18 @@ export function BoxList({ boxes, pipeline, prevYearStats = {} }: BoxListProps) {
                                           Exhibitor in Pretix
                                           <ExternalLink className="w-3 h-3" />
                                         </Link>
-                                        {ft > 0 && (
-                                          <span className={`text-xs ${hasMissing ? "text-amber-600 dark:text-amber-400" : "text-green-600 dark:text-green-400"}`} data-testid={`text-free-tickets-${box.key}`}>
-                                            {fc}/{ft} free
-                                          </span>
-                                        )}
+                                        <div className="flex items-center gap-2">
+                                          {ft > 0 && (
+                                            <span className={`text-xs ${freeMissing ? "text-amber-600 dark:text-amber-400" : "text-green-600 dark:text-green-400"}`} data-testid={`text-free-tickets-${box.key}`}>
+                                              {fc}/{ft} free tickets
+                                            </span>
+                                          )}
+                                          {pt > 0 && (
+                                            <span className={`text-xs ${pc < pt ? "text-amber-600 dark:text-amber-400" : "text-green-600 dark:text-green-400"}`} data-testid={`text-paid-tickets-${box.key}`}>
+                                              {pc}/{pt} paid tickets
+                                            </span>
+                                          )}
+                                        </div>
                                       </div>
                                     );
                                   }

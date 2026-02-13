@@ -489,15 +489,20 @@ export async function registerRoutes(
             const vouchers = await getExhibitorVouchers(exhibitor.id);
             let freeTotal = 0;
             let freeClaimed = 0;
+            let paidTotal = 0;
+            let paidClaimed = 0;
             for (const v of vouchers) {
               const isFree = (v.price_mode === "set" && parseFloat(v.value || "0") === 0)
                 || v.price_mode === "none" || !v.price_mode;
               if (isFree) {
                 freeTotal += v.max_usages || 0;
                 freeClaimed += v.redeemed || 0;
+              } else {
+                paidTotal += v.max_usages || 0;
+                paidClaimed += v.redeemed || 0;
               }
             }
-            return { ...exhibitor, freeTotal, freeClaimed };
+            return { ...exhibitor, freeTotal, freeClaimed, paidTotal, paidClaimed };
           } catch {
             return { ...exhibitor, freeTotal: 0, freeClaimed: 0 };
           }
