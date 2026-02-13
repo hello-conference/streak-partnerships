@@ -251,6 +251,20 @@ export function BoxList({ boxes, pipeline, prevYearStats = {} }: BoxListProps) {
                     const isPartnershipExpanded = expandedPartnershipLevels[partnership] ?? true;
                     
                     const prevPartnershipStats = prevYearStats[partnership];
+
+                    let groupFreeTotal = 0;
+                    let groupFreeClaimed = 0;
+                    let groupPaidClaimed = 0;
+                    if (exhibitors) {
+                      for (const box of partnershipBoxes) {
+                        const ex = findExhibitor(box.name);
+                        if (ex) {
+                          groupFreeTotal += ex.freeTotal || 0;
+                          groupFreeClaimed += ex.freeClaimed || 0;
+                          groupPaidClaimed += ex.paidClaimed || 0;
+                        }
+                      }
+                    }
                     
                     // Find the last added partner (most recent by lastUpdatedTimestamp, which reflects stage changes)
                     const lastAddedBox = partnershipBoxes.reduce((latest, box) => {
@@ -291,15 +305,31 @@ export function BoxList({ boxes, pipeline, prevYearStats = {} }: BoxListProps) {
                             )}
                           </div>
                         </div>
-                        <div className="flex flex-col items-end gap-0.5">
-                          <div className="text-sm font-semibold text-primary">
-                            {formatCurrency(partnershipTotal)}
-                          </div>
-                          {prevPartnershipStats && (
-                            <div className="text-xs text-muted-foreground/70">
-                              2025: {formatCurrency(prevPartnershipStats.total)}
+                        <div className="flex items-center gap-4">
+                          {(groupFreeTotal > 0 || groupPaidClaimed > 0) && (
+                            <div className="flex flex-col items-end gap-0.5">
+                              {groupFreeTotal > 0 && (
+                                <span className={`text-xs ${groupFreeClaimed < groupFreeTotal ? "text-amber-600 dark:text-amber-400" : "text-green-600 dark:text-green-400"}`}>
+                                  {groupFreeClaimed}/{groupFreeTotal} free tickets
+                                </span>
+                              )}
+                              {groupPaidClaimed > 0 && (
+                                <span className="text-xs text-green-600 dark:text-green-400">
+                                  {groupPaidClaimed} paid tickets
+                                </span>
+                              )}
                             </div>
                           )}
+                          <div className="flex flex-col items-end gap-0.5">
+                            <div className="text-sm font-semibold text-primary">
+                              {formatCurrency(partnershipTotal)}
+                            </div>
+                            {prevPartnershipStats && (
+                              <div className="text-xs text-muted-foreground/70">
+                                2025: {formatCurrency(prevPartnershipStats.total)}
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </button>
                       {isPartnershipExpanded && (
