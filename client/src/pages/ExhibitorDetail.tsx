@@ -5,7 +5,7 @@ import { useExhibitorById, usePretixItems } from "@/hooks/use-pretix";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ChevronLeft, Ticket, Copy, CheckCircle2, ChevronDown, ChevronRight, User } from "lucide-react";
+import { ChevronLeft, Ticket, Copy, Check, CheckCircle2, ChevronDown, ChevronRight, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState, useMemo } from "react";
 
@@ -182,6 +182,18 @@ export default function ExhibitorDetail() {
             <div className="flex items-center gap-2 mt-2">
               <span className="text-xs text-muted-foreground">Access Code:</span>
               <code className="text-xs bg-muted px-2 py-1 rounded font-mono">{exhibitor.access_code}</code>
+              <Button
+                size="icon"
+                variant="ghost"
+                data-testid="button-copy-access-code"
+                onClick={() => copyToClipboard(exhibitor.access_code!)}
+              >
+                {copiedCode === exhibitor.access_code ? (
+                  <Check className="w-3.5 h-3.5 text-green-500" />
+                ) : (
+                  <Copy className="w-3.5 h-3.5" />
+                )}
+              </Button>
             </div>
           )}
         </div>
