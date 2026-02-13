@@ -68,6 +68,13 @@ export async function createExhibitor(name: string): Promise<any> {
   });
 }
 
+function generateTagSlug(partnerName: string): string {
+  return partnerName
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
 function generateVoucherCode(partnerName: string): string {
   const prefix = partnerName
     .toUpperCase()
@@ -87,7 +94,7 @@ export async function createVouchersForExhibitor(
     throw new Error(`Invalid partnership level: ${partnershipLevel}`);
   }
 
-  const tag = `exhibitor-${exhibitorId}`;
+  const slug = generateTagSlug(partnerName);
 
   const freeVoucher = await pretixFetch(
     `/organizers/${ORGANIZER}/events/${EVENT}/vouchers/`,
@@ -98,7 +105,7 @@ export async function createVouchersForExhibitor(
       price_mode: "set",
       value: "0.00",
       item: FREE_ITEM_ID,
-      tag,
+      tag: `${slug}-free`,
       comment: `Free ticket voucher for ${partnerName} (${partnershipLevel})`,
     }
   );
@@ -112,7 +119,7 @@ export async function createVouchersForExhibitor(
       price_mode: "set",
       value: "0.00",
       item: PARTNER_ITEM_ID,
-      tag,
+      tag: `${slug}-free-partner`,
       comment: `Partner ticket voucher for ${partnerName} (${partnershipLevel})`,
     }
   );

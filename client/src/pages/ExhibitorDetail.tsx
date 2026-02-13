@@ -65,6 +65,25 @@ function calculateVoucherRevenue(voucher: any): number {
   return 0;
 }
 
+function detectPartnershipLevel(vouchers: any[]): string | null {
+  for (const v of vouchers) {
+    const comment = v.comment || v.exhibitor_comment || "";
+    const match = comment.match(/\b(Ultimate|Platinum|Gold|Silver)\b/i);
+    if (match) return match[1].charAt(0).toUpperCase() + match[1].slice(1).toLowerCase();
+  }
+  return null;
+}
+
+function getPartnershipBadgeColor(level: string): string {
+  switch (level.toLowerCase()) {
+    case "ultimate": return "bg-purple-600 text-white dark:bg-purple-500";
+    case "platinum": return "bg-slate-500 text-white dark:bg-slate-400 dark:text-slate-900";
+    case "gold": return "bg-yellow-500 text-white dark:bg-yellow-400 dark:text-yellow-900";
+    case "silver": return "bg-gray-400 text-white dark:bg-gray-300 dark:text-gray-800";
+    default: return "";
+  }
+}
+
 export default function ExhibitorDetail() {
   const [, params] = useRoute("/pipelines/:pipelineKey/exhibitors/:id");
   const exhibitorId = params?.id ? parseInt(params.id) : null;
@@ -131,6 +150,7 @@ export default function ExhibitorDetail() {
   const paidMaxUsages = paidVouchers.reduce((sum: number, v: any) => sum + (v.max_usages || 0), 0);
   const paidClaimed = paidVouchers.reduce((sum: number, v: any) => sum + (v.redeemed || 0), 0);
   const totalRevenue = vouchers.reduce((sum: number, v: any) => sum + calculateVoucherRevenue(v), 0);
+  const partnershipLevel = detectPartnershipLevel(vouchers);
 
   return (
     <Shell>
@@ -141,11 +161,16 @@ export default function ExhibitorDetail() {
         </Link>
 
         <div>
-          <div className="flex items-center gap-3 mb-2">
+          <div className="flex items-center gap-3 mb-2 flex-wrap">
             <Ticket className="w-6 h-6 text-primary" />
             <h1 className="text-2xl font-bold tracking-tight text-foreground" data-testid="text-exhibitor-title">
               {exhibitor.name}
             </h1>
+            {partnershipLevel && (
+              <Badge className={`text-xs ${getPartnershipBadgeColor(partnershipLevel)}`} data-testid="badge-partnership-level">
+                {partnershipLevel}
+              </Badge>
+            )}
           </div>
           <p className="text-muted-foreground">Voucher usage and ticket assignment details from Pretix.</p>
           {exhibitor.access_code && (
@@ -156,7 +181,7 @@ export default function ExhibitorDetail() {
           )}
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           <Card className="p-4">
             <div className="text-xs font-medium text-muted-foreground mb-1">Total Vouchers</div>
             <div className="text-2xl font-bold text-foreground" data-testid="text-total-vouchers">{vouchers.length}</div>
@@ -179,17 +204,19 @@ export default function ExhibitorDetail() {
               <span className="text-sm text-muted-foreground font-normal"> / {paidMaxUsages}</span>
             </div>
           </Card>
+          <Card className="p-4">
+            <div className="text-xs font-medium text-muted-foreground mb-1">Extra Ticket Revenue</div>
+            <div className="text-2xl font-bold" data-testid="text-extra-revenue">
+              <span className={totalRevenue > 0 ? "text-green-600 dark:text-green-400" : "text-foreground"}>
+                {"\u20AC"}{totalRevenue.toFixed(2)}
+              </span>
+              <span className="text-xs text-muted-foreground font-normal ml-1">excl. VAT</span>
+            </div>
+          </Card>
         </div>
 
         <div className="space-y-4">
-          <div className="flex items-center justify-between gap-4 flex-wrap">
-            <h2 className="text-lg font-semibold text-foreground">Voucher Details</h2>
-            {totalRevenue > 0 && (
-              <div className="text-sm text-muted-foreground" data-testid="text-total-revenue">
-                Total Revenue (excl. VAT): <span className="font-semibold text-foreground">{"\u20AC"}{totalRevenue.toFixed(2)}</span>
-              </div>
-            )}
-          </div>
+          <h2 className="text-lg font-semibold text-foreground">Voucher Details</h2>
 
           {vouchers.length === 0 ? (
             <Card className="p-6 text-center">
@@ -210,7 +237,6 @@ export default function ExhibitorDetail() {
                 const hasPositions = voucher.order_positions && voucher.order_positions.length > 0;
                 const isExpanded = expandedVouchers[voucher.id] || false;
                 const isCollapsible = isPaid && (hasPositions || claimed > 0);
-                const revenue = calculateVoucherRevenue(voucher);
 
                 return (
                   <Card key={voucher.id} className="p-4" data-testid={`card-voucher-${voucher.id}`}>
@@ -275,12 +301,6 @@ export default function ExhibitorDetail() {
                         </div>
                       </div>
 
-                      {isPaid && revenue > 0 && (
-                        <div className="text-xs text-muted-foreground">
-                          Revenue (excl. VAT): <span className="font-medium text-foreground">{"\u20AC"}{revenue.toFixed(2)}</span>
-                        </div>
-                      )}
-
                       <div className="flex flex-wrap gap-4 text-xs text-muted-foreground">
                         {voucher.comment && (
                           <span>{voucher.comment}</span>
@@ -316,7 +336,6 @@ export default function ExhibitorDetail() {
                                   const lastName = pos.attendee_name_parts?.family_name || "";
                                   const fullName = pos.attendee_name || `${firstName} ${lastName}`.trim();
                                   const email = pos.attendee_email || "";
-                                  const price = parseFloat(pos.price || "0");
 
                                   return (
                                     <div
@@ -334,9 +353,6 @@ export default function ExhibitorDetail() {
                                       </div>
                                       {email && (
                                         <span className="text-muted-foreground truncate">{email}</span>
-                                      )}
-                                      {price > 0 && (
-                                        <span className="text-muted-foreground sm:ml-auto shrink-0">{"\u20AC"}{price.toFixed(2)}</span>
                                       )}
                                     </div>
                                   );
