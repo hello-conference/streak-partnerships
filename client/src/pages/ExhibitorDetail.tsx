@@ -27,11 +27,12 @@ function getItemBadgeLabel(itemId: number | null, itemsMap: Record<number, strin
 }
 
 const FREE_ITEM_ID = 907413;
+const PARTNER_ITEM_ID = 907414;
 
 function isVoucherFree(voucher: any): boolean {
-  if (voucher.item === FREE_ITEM_ID) return true;
+  if (voucher.item === FREE_ITEM_ID || voucher.item === PARTNER_ITEM_ID) return true;
   const tag = (voucher.tag || "").toLowerCase();
-  if (tag.endsWith("-free") && !tag.endsWith("-free-partner")) return true;
+  if (tag.includes("-free")) return true;
   return false;
 }
 
