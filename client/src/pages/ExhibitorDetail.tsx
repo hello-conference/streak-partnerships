@@ -88,6 +88,7 @@ export default function ExhibitorDetail() {
   const [, params] = useRoute("/pipelines/:pipelineKey/exhibitors/:id");
   const exhibitorId = params?.id ? parseInt(params.id) : null;
   const pipelineKey = params?.pipelineKey || "";
+  const levelFromUrl = new URLSearchParams(window.location.search).get("level");
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
   const [expandedVouchers, setExpandedVouchers] = useState<Record<number, boolean>>({});
 
@@ -150,7 +151,7 @@ export default function ExhibitorDetail() {
   const paidMaxUsages = paidVouchers.reduce((sum: number, v: any) => sum + (v.max_usages || 0), 0);
   const paidClaimed = paidVouchers.reduce((sum: number, v: any) => sum + (v.redeemed || 0), 0);
   const totalRevenue = vouchers.reduce((sum: number, v: any) => sum + calculateVoucherRevenue(v), 0);
-  const partnershipLevel = detectPartnershipLevel(vouchers);
+  const partnershipLevel = levelFromUrl || detectPartnershipLevel(vouchers);
 
   return (
     <Shell>
