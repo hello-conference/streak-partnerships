@@ -184,6 +184,24 @@ export async function listItems(): Promise<any[]> {
   return allItems;
 }
 
+export async function getOrderPositionsByVoucher(voucherId: number): Promise<any[]> {
+  const positions: any[] = [];
+  let url = `/organizers/${ORGANIZER}/events/${EVENT}/orderpositions/?voucher=${voucherId}`;
+
+  while (url) {
+    const data = await pretixFetch(url);
+    positions.push(...(data.results || []));
+    if (data.next) {
+      const nextUrl = new URL(data.next);
+      url = nextUrl.pathname + nextUrl.search;
+    } else {
+      url = "";
+    }
+  }
+
+  return positions;
+}
+
 export async function findExhibitorByName(name: string): Promise<any | null> {
   const exhibitors = await listExhibitors();
   return exhibitors.find(

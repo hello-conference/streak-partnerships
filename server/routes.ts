@@ -5,7 +5,7 @@ import { api } from "@shared/routes";
 import { z } from "zod";
 import { setupAuth, registerAuthRoutes, isAuthenticated } from "./replit_integrations/auth";
 import * as XLSX from "xlsx";
-import { listExhibitors, findExhibitorByName, createExhibitor, createVouchersForExhibitor, getExhibitor, getExhibitorVouchers, listItems, VOUCHER_ALLOCATIONS } from "./pretix";
+import { listExhibitors, findExhibitorByName, createExhibitor, createVouchersForExhibitor, getExhibitor, getExhibitorVouchers, listItems, getOrderPositionsByVoucher, VOUCHER_ALLOCATIONS } from "./pretix";
 
 const STREAK_API_BASE = "https://www.streak.com/api/v1";
 
@@ -549,7 +549,23 @@ export async function registerRoutes(
       const { id } = req.params;
       const exhibitor = await getExhibitor(parseInt(id));
       const vouchers = await getExhibitorVouchers(parseInt(id));
-      res.json({ ...exhibitor, vouchers });
+      const vouchersWithPositions = await Promise.all(
+        vouchers.map(async (voucher: any) => {
+          const isFree = (voucher.price_mode === "set" && parseFloat(voucher.value || "0") === 0)
+            || voucher.price_mode === "none" || !voucher.price_mode;
+          const isPaid = !isFree;
+          if (isPaid && voucher.redeemed > 0) {
+            try {
+              const positions = await getOrderPositionsByVoucher(voucher.id);
+              return { ...voucher, order_positions: positions };
+            } catch {
+              return voucher;
+            }
+          }
+          return voucher;
+        })
+      );
+      res.json({ ...exhibitor, vouchers: vouchersWithPositions });
     } catch (error: any) {
       console.error(error);
       if (error.message?.includes("404")) {

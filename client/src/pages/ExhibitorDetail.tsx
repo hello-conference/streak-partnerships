@@ -5,7 +5,7 @@ import { useExhibitorById, usePretixItems } from "@/hooks/use-pretix";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ChevronLeft, Ticket, Copy, CheckCircle2 } from "lucide-react";
+import { ChevronLeft, Ticket, Copy, CheckCircle2, ChevronDown, ChevronRight, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState, useMemo } from "react";
 
@@ -26,11 +26,51 @@ function getItemBadgeLabel(itemId: number | null, itemsMap: Record<number, strin
   return words.length > 2 ? words.slice(0, 2).join(" ") : name;
 }
 
+function isVoucherFree(voucher: any): boolean {
+  if (voucher.price_mode === "set" && parseFloat(voucher.value || "0") === 0) return true;
+  if (voucher.price_mode === "none" || !voucher.price_mode) return true;
+  return false;
+}
+
+function isPaidVoucher(voucher: any): boolean {
+  return !isVoucherFree(voucher);
+}
+
+function formatPrice(voucher: any): string | null {
+  if (voucher.price_mode === "set" && voucher.value) {
+    const val = parseFloat(voucher.value);
+    if (val === 0) return "Free";
+    return `\u20AC${val.toFixed(2)}`;
+  }
+  if (voucher.price_mode === "percent" && voucher.value) {
+    return `${voucher.value}% off`;
+  }
+  return null;
+}
+
+function calculateVoucherRevenue(voucher: any): number {
+  if (!isPaidVoucher(voucher)) return 0;
+  const redeemed = voucher.redeemed || 0;
+  if (redeemed === 0) return 0;
+
+  if (voucher.order_positions && voucher.order_positions.length > 0) {
+    return voucher.order_positions.reduce((sum: number, pos: any) => {
+      return sum + parseFloat(pos.price || "0");
+    }, 0);
+  }
+
+  if (voucher.price_mode === "set" && voucher.value) {
+    return redeemed * parseFloat(voucher.value);
+  }
+  return 0;
+}
+
 export default function ExhibitorDetail() {
   const [, params] = useRoute("/pipelines/:pipelineKey/exhibitors/:id");
   const exhibitorId = params?.id ? parseInt(params.id) : null;
   const pipelineKey = params?.pipelineKey || "";
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
+  const [expandedVouchers, setExpandedVouchers] = useState<Record<number, boolean>>({});
 
   const { data: exhibitor, isLoading, error } = useExhibitorById(exhibitorId);
   const { data: items } = usePretixItems();
@@ -52,6 +92,10 @@ export default function ExhibitorDetail() {
     navigator.clipboard.writeText(code);
     setCopiedCode(code);
     setTimeout(() => setCopiedCode(null), 2000);
+  };
+
+  const toggleVoucherExpand = (voucherId: number) => {
+    setExpandedVouchers(prev => ({ ...prev, [voucherId]: !prev[voucherId] }));
   };
 
   if (isLoading) {
@@ -79,9 +123,14 @@ export default function ExhibitorDetail() {
   }
 
   const vouchers = exhibitor.vouchers || [];
+  const freeVouchers = vouchers.filter((v: any) => isVoucherFree(v));
+  const paidVouchers = vouchers.filter((v: any) => isPaidVoucher(v));
 
-  const totalMaxUsages = vouchers.reduce((sum: number, v: any) => sum + (v.max_usages || 0), 0);
-  const totalRedeemed = vouchers.reduce((sum: number, v: any) => sum + (v.redeemed || 0), 0);
+  const freeMaxUsages = freeVouchers.reduce((sum: number, v: any) => sum + (v.max_usages || 0), 0);
+  const freeClaimed = freeVouchers.reduce((sum: number, v: any) => sum + (v.redeemed || 0), 0);
+  const paidMaxUsages = paidVouchers.reduce((sum: number, v: any) => sum + (v.max_usages || 0), 0);
+  const paidClaimed = paidVouchers.reduce((sum: number, v: any) => sum + (v.redeemed || 0), 0);
+  const totalRevenue = vouchers.reduce((sum: number, v: any) => sum + calculateVoucherRevenue(v), 0);
 
   return (
     <Shell>
@@ -113,22 +162,34 @@ export default function ExhibitorDetail() {
             <div className="text-2xl font-bold text-foreground" data-testid="text-total-vouchers">{vouchers.length}</div>
           </Card>
           <Card className="p-4">
-            <div className="text-xs font-medium text-muted-foreground mb-1">Tickets Available</div>
-            <div className="text-2xl font-bold text-foreground" data-testid="text-total-available">{totalMaxUsages}</div>
+            <div className="text-xs font-medium text-muted-foreground mb-1">Free Tickets Claimed</div>
+            <div className="text-2xl font-bold" data-testid="text-free-claimed">
+              <span className={freeClaimed > 0 ? "text-green-600 dark:text-green-400" : "text-foreground"}>
+                {freeClaimed}
+              </span>
+              <span className="text-sm text-muted-foreground font-normal"> / {freeMaxUsages}</span>
+            </div>
           </Card>
           <Card className="p-4">
-            <div className="text-xs font-medium text-muted-foreground mb-1">Tickets Claimed</div>
-            <div className="text-2xl font-bold" data-testid="text-total-claimed">
-              <span className={totalRedeemed > 0 ? "text-green-600 dark:text-green-400" : "text-foreground"}>
-                {totalRedeemed}
+            <div className="text-xs font-medium text-muted-foreground mb-1">Paid Tickets Claimed</div>
+            <div className="text-2xl font-bold" data-testid="text-paid-claimed">
+              <span className={paidClaimed > 0 ? "text-green-600 dark:text-green-400" : "text-foreground"}>
+                {paidClaimed}
               </span>
-              <span className="text-sm text-muted-foreground font-normal"> / {totalMaxUsages}</span>
+              <span className="text-sm text-muted-foreground font-normal"> / {paidMaxUsages}</span>
             </div>
           </Card>
         </div>
 
         <div className="space-y-4">
-          <h2 className="text-lg font-semibold text-foreground">Voucher Details</h2>
+          <div className="flex items-center justify-between gap-4 flex-wrap">
+            <h2 className="text-lg font-semibold text-foreground">Voucher Details</h2>
+            {totalRevenue > 0 && (
+              <div className="text-sm text-muted-foreground" data-testid="text-total-revenue">
+                Total Revenue (excl. VAT): <span className="font-semibold text-foreground">{"\u20AC"}{totalRevenue.toFixed(2)}</span>
+              </div>
+            )}
+          </div>
 
           {vouchers.length === 0 ? (
             <Card className="p-6 text-center">
@@ -143,26 +204,31 @@ export default function ExhibitorDetail() {
                 const isCopied = copiedCode === voucher.code;
                 const itemName = getItemName(voucher.item, itemsMap);
                 const badgeLabel = getItemBadgeLabel(voucher.item, itemsMap);
-                const priceInfo = voucher.price_mode === "set" && voucher.value
-                  ? (parseFloat(voucher.value) === 0 ? "Free" : `${voucher.value}`)
-                  : voucher.price_mode === "percent" && voucher.value
-                  ? `${voucher.value}% off`
-                  : null;
+                const priceDisplay = formatPrice(voucher);
+                const isFree = isVoucherFree(voucher);
+                const isPaid = isPaidVoucher(voucher);
+                const hasPositions = voucher.order_positions && voucher.order_positions.length > 0;
+                const isExpanded = expandedVouchers[voucher.id] || false;
+                const isCollapsible = isPaid && (hasPositions || claimed > 0);
+                const revenue = calculateVoucherRevenue(voucher);
 
                 return (
                   <Card key={voucher.id} className="p-4" data-testid={`card-voucher-${voucher.id}`}>
                     <div className="flex flex-col gap-3">
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <Badge variant="secondary" className="text-xs" data-testid={`badge-ticket-type-${voucher.id}`}>
+                          <Badge variant={isFree ? "secondary" : "default"} className="text-xs" data-testid={`badge-ticket-type-${voucher.id}`}>
+                            {isFree ? "Free" : "Paid"}
+                          </Badge>
+                          <Badge variant="outline" className="text-xs">
                             {badgeLabel}
                           </Badge>
                           <span className="text-sm font-medium text-foreground">
                             {itemName}
                           </span>
-                          {priceInfo && priceInfo !== "Free" && (
+                          {priceDisplay && priceDisplay !== "Free" && (
                             <span className="text-xs text-muted-foreground">
-                              ({priceInfo})
+                              ({priceDisplay})
                             </span>
                           )}
                         </div>
@@ -209,6 +275,12 @@ export default function ExhibitorDetail() {
                         </div>
                       </div>
 
+                      {isPaid && revenue > 0 && (
+                        <div className="text-xs text-muted-foreground">
+                          Revenue (excl. VAT): <span className="font-medium text-foreground">{"\u20AC"}{revenue.toFixed(2)}</span>
+                        </div>
+                      )}
+
                       <div className="flex flex-wrap gap-4 text-xs text-muted-foreground">
                         {voucher.comment && (
                           <span>{voucher.comment}</span>
@@ -220,6 +292,64 @@ export default function ExhibitorDetail() {
                           <span>Expires: {new Date(voucher.valid_until).toLocaleDateString()}</span>
                         )}
                       </div>
+
+                      {isCollapsible && (
+                        <div className="border-t border-border pt-2">
+                          <button
+                            onClick={() => toggleVoucherExpand(voucher.id)}
+                            className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors w-full"
+                            data-testid={`button-expand-assignments-${voucher.id}`}
+                          >
+                            {isExpanded ? (
+                              <ChevronDown className="w-3.5 h-3.5" />
+                            ) : (
+                              <ChevronRight className="w-3.5 h-3.5" />
+                            )}
+                            <span>Ticket Assignments ({claimed})</span>
+                          </button>
+
+                          {isExpanded && (
+                            <div className="mt-2 space-y-1.5">
+                              {hasPositions ? (
+                                voucher.order_positions.map((pos: any, idx: number) => {
+                                  const firstName = pos.attendee_name_parts?.given_name || "";
+                                  const lastName = pos.attendee_name_parts?.family_name || "";
+                                  const fullName = pos.attendee_name || `${firstName} ${lastName}`.trim();
+                                  const email = pos.attendee_email || "";
+                                  const price = parseFloat(pos.price || "0");
+
+                                  return (
+                                    <div
+                                      key={pos.id || idx}
+                                      className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3 py-1.5 px-2 rounded bg-muted/50 text-xs"
+                                      data-testid={`row-assignment-${voucher.id}-${idx}`}
+                                    >
+                                      <div className="flex items-center gap-1.5 min-w-0">
+                                        <User className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                                        <span className="font-medium text-foreground truncate">
+                                          {firstName && lastName
+                                            ? `${firstName} ${lastName}`
+                                            : fullName || "N/A"}
+                                        </span>
+                                      </div>
+                                      {email && (
+                                        <span className="text-muted-foreground truncate">{email}</span>
+                                      )}
+                                      {price > 0 && (
+                                        <span className="text-muted-foreground sm:ml-auto shrink-0">{"\u20AC"}{price.toFixed(2)}</span>
+                                      )}
+                                    </div>
+                                  );
+                                })
+                              ) : (
+                                <p className="text-xs text-muted-foreground py-1">
+                                  {claimed} ticket(s) claimed but attendee details are not yet available.
+                                </p>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </Card>
                 );
