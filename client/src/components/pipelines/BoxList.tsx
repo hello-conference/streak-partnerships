@@ -31,12 +31,12 @@ interface BoxListProps {
 }
 
 export function BoxList({ boxes, pipeline, prevYearStats = {} }: BoxListProps) {
-  const [expandedSection, setExpandedSection] = useState<number | null>(0);
+  const [expandedSection, setExpandedSection] = useState<number | null>(1);
   const [expandedPartnershipLevels, setExpandedPartnershipLevels] = useState<Record<string, boolean>>({
-    "Ultimate": true,
-    "Platinum": true,
-    "Gold": true,
-    "Silver": true
+    "Ultimate": false,
+    "Platinum": false,
+    "Gold": false,
+    "Silver": false
   });
 
   const { data: exhibitors, isLoading: exhibitorsLoading } = useExhibitors();
@@ -250,7 +250,7 @@ export function BoxList({ boxes, pipeline, prevYearStats = {} }: BoxListProps) {
                       return sum + (price || 0);
                     }, 0);
                     
-                    const isPartnershipExpanded = expandedPartnershipLevels[partnership] ?? true;
+                    const isPartnershipExpanded = expandedPartnershipLevels[partnership] ?? false;
                     
                     const prevPartnershipStats = prevYearStats[partnership];
 
