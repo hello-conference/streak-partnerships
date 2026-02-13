@@ -291,7 +291,7 @@ export default function PipelineDetail() {
               <Card className="p-4 border border-border/50" data-testid="card-ticket-summary">
                 <div className="flex items-center gap-2 mb-3">
                   <Ticket className="w-4 h-4 text-muted-foreground" />
-                  <span className="text-sm font-semibold text-foreground">Ticket Summary</span>
+                  <span className="text-sm font-semibold text-foreground">Partner Ticket Summary</span>
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                   <div>
@@ -312,7 +312,6 @@ export default function PipelineDetail() {
                     <div className="text-xs text-muted-foreground mb-1">Extra Paid Tickets</div>
                     <div className="text-lg font-bold text-foreground" data-testid="text-paid-tickets">
                       {ticketSummary.paid.claimed}
-                      <span className="text-sm text-muted-foreground font-normal"> / {ticketSummary.paid.total}</span>
                     </div>
                   </div>
                   <div>
