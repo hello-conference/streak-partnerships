@@ -5,6 +5,7 @@ import { api } from "@shared/routes";
 import { z } from "zod";
 import { setupAuth, registerAuthRoutes, isAuthenticated } from "./replit_integrations/auth";
 import * as XLSX from "xlsx";
+import { listExhibitors, findExhibitorByName, createExhibitor, createVouchersForExhibitor, getExhibitor, getExhibitorVouchers, VOUCHER_ALLOCATIONS } from "./pretix";
 
 const STREAK_API_BASE = "https://www.streak.com/api/v1";
 
@@ -475,6 +476,76 @@ export async function registerRoutes(
     } catch (error: any) {
       console.error(error);
       res.status(500).json({ message: error.message || "Failed to export contacts" });
+    }
+  });
+
+  // Pretix API routes
+  app.get(api.pretix.getExhibitors.path, isAuthenticated, isDomainAllowed, async (req: any, res) => {
+    try {
+      const exhibitors = await listExhibitors();
+      res.json(exhibitors);
+    } catch (error: any) {
+      console.error(error);
+      res.status(500).json({ message: error.message || "Failed to fetch exhibitors" });
+    }
+  });
+
+  app.get(api.pretix.getExhibitorByName.path, isAuthenticated, isDomainAllowed, async (req: any, res) => {
+    try {
+      const { name } = req.params;
+      const exhibitor = await findExhibitorByName(decodeURIComponent(name));
+      if (!exhibitor) {
+        return res.status(404).json({ message: "Exhibitor not found" });
+      }
+      const vouchers = await getExhibitorVouchers(exhibitor.id);
+      res.json({ ...exhibitor, vouchers });
+    } catch (error: any) {
+      console.error(error);
+      res.status(500).json({ message: error.message || "Failed to find exhibitor" });
+    }
+  });
+
+  app.post(api.pretix.createExhibitor.path, isAuthenticated, isDomainAllowed, async (req: any, res) => {
+    try {
+      const { name, partnershipLevel } = req.body;
+      if (!name || !partnershipLevel) {
+        return res.status(400).json({ message: "name and partnershipLevel are required" });
+      }
+      if (!VOUCHER_ALLOCATIONS[partnershipLevel]) {
+        return res.status(400).json({ message: `Invalid partnership level: ${partnershipLevel}. Must be one of: ${Object.keys(VOUCHER_ALLOCATIONS).join(", ")}` });
+      }
+      const exhibitor = await createExhibitor(name);
+      const vouchers = await createVouchersForExhibitor(exhibitor.id, name, partnershipLevel);
+      res.status(201).json({ ...exhibitor, vouchers });
+    } catch (error: any) {
+      console.error(error);
+      res.status(500).json({ message: error.message || "Failed to create exhibitor" });
+    }
+  });
+
+  app.get(api.pretix.getExhibitorVouchers.path, isAuthenticated, isDomainAllowed, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const vouchers = await getExhibitorVouchers(parseInt(id));
+      res.json(vouchers);
+    } catch (error: any) {
+      console.error(error);
+      res.status(500).json({ message: error.message || "Failed to fetch exhibitor vouchers" });
+    }
+  });
+
+  app.get(api.pretix.getExhibitorById.path, isAuthenticated, isDomainAllowed, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const exhibitor = await getExhibitor(parseInt(id));
+      const vouchers = await getExhibitorVouchers(parseInt(id));
+      res.json({ ...exhibitor, vouchers });
+    } catch (error: any) {
+      console.error(error);
+      if (error.message?.includes("404")) {
+        return res.status(404).json({ message: "Exhibitor not found" });
+      }
+      res.status(500).json({ message: error.message || "Failed to fetch exhibitor" });
     }
   });
 

@@ -65,6 +65,33 @@ export const api = {
         500: errorSchemas.internal,
       },
     }
+  },
+  pretix: {
+    getExhibitors: {
+      method: 'GET' as const,
+      path: '/api/pretix/exhibitors',
+      responses: { 200: z.array(z.any()), 500: errorSchemas.internal },
+    },
+    getExhibitorByName: {
+      method: 'GET' as const,
+      path: '/api/pretix/exhibitors/by-name/:name',
+      responses: { 200: z.any(), 404: errorSchemas.notFound, 500: errorSchemas.internal },
+    },
+    createExhibitor: {
+      method: 'POST' as const,
+      path: '/api/pretix/exhibitors',
+      responses: { 201: z.any(), 400: errorSchemas.badRequest, 500: errorSchemas.internal },
+    },
+    getExhibitorById: {
+      method: 'GET' as const,
+      path: '/api/pretix/exhibitors/:id',
+      responses: { 200: z.any(), 404: errorSchemas.notFound, 500: errorSchemas.internal },
+    },
+    getExhibitorVouchers: {
+      method: 'GET' as const,
+      path: '/api/pretix/exhibitors/:id/vouchers',
+      responses: { 200: z.any(), 500: errorSchemas.internal },
+    },
   }
 };
 

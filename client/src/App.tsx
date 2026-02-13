@@ -7,6 +7,7 @@ import { useAuth } from "@/hooks/use-auth";
 import NotFound from "@/pages/not-found";
 import Dashboard from "@/pages/Dashboard";
 import PipelineDetail from "@/pages/PipelineDetail";
+import ExhibitorDetail from "@/pages/ExhibitorDetail";
 import Login from "@/pages/Login";
 
 function AuthenticatedRouter() {
@@ -14,6 +15,7 @@ function AuthenticatedRouter() {
     <Switch>
       <Route path="/" component={Dashboard} />
       <Route path="/pipelines/:key" component={PipelineDetail} />
+      <Route path="/exhibitors/:id" component={ExhibitorDetail} />
       <Route component={NotFound} />
     </Switch>
   );

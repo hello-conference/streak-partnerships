@@ -3,11 +3,15 @@ import { StatusBadge } from "@/components/ui/StatusBadge";
 import { format } from "date-fns";
 import { Card } from "@/components/ui/card";
 import { motion } from "framer-motion";
-import { Calendar, ChevronDown, Mail, DollarSign, CheckCircle2, XCircle } from "lucide-react";
+import { Calendar, ChevronDown, Mail, DollarSign, CheckCircle2, XCircle, Ticket, Loader2, ExternalLink } from "lucide-react";
 import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { buildUrl, api } from "@shared/routes";
+import { useExhibitors, useCreateExhibitor } from "@/hooks/use-pretix";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Link } from "wouter";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -33,6 +37,20 @@ export function BoxList({ boxes, pipeline, prevYearStats = {} }: BoxListProps) {
     "Gold": true,
     "Silver": true
   });
+
+  const { data: exhibitors, isLoading: exhibitorsLoading } = useExhibitors();
+  const createExhibitorMutation = useCreateExhibitor();
+
+  const [createConfirmDialog, setCreateConfirmDialog] = useState<{
+    open: boolean;
+    boxName: string;
+    partnershipLevel: string;
+  }>({ open: false, boxName: "", partnershipLevel: "" });
+
+  const findExhibitor = (name: string) => {
+    if (!exhibitors) return null;
+    return exhibitors.find((e: any) => e.name?.toLowerCase() === name.toLowerCase()) || null;
+  };
   
   // State for the confirmation dialog
   const [confirmDialog, setConfirmDialog] = useState<{
@@ -383,6 +401,56 @@ export function BoxList({ boxes, pipeline, prevYearStats = {} }: BoxListProps) {
                                     </div>
                                   );
                                 })()}
+                                
+                                {/* Pretix Exhibitor Status */}
+                                {(() => {
+                                  const exhibitor = findExhibitor(box.name);
+                                  if (exhibitorsLoading) {
+                                    return (
+                                      <div className="flex items-center gap-1.5 pt-1 border-t border-border/30">
+                                        <Loader2 className="w-3 h-3 animate-spin text-muted-foreground" />
+                                        <span className="text-xs text-muted-foreground">Checking exhibitor...</span>
+                                      </div>
+                                    );
+                                  }
+                                  if (exhibitor) {
+                                    return (
+                                      <div className="flex items-center gap-2 pt-1 border-t border-border/30">
+                                        <Link
+                                          href={`/exhibitors/${exhibitor.id}`}
+                                          className="flex items-center gap-1.5 text-xs text-green-600 dark:text-green-400 hover:underline"
+                                          data-testid={`link-exhibitor-${box.key}`}
+                                        >
+                                          <Ticket className="w-3.5 h-3.5" />
+                                          Exhibitor in Pretix
+                                          <ExternalLink className="w-3 h-3" />
+                                        </Link>
+                                      </div>
+                                    );
+                                  }
+                                  return (
+                                    <div className="flex items-center gap-2 pt-1 border-t border-border/30">
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        className="gap-1.5 text-xs"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setCreateConfirmDialog({
+                                            open: true,
+                                            boxName: box.name,
+                                            partnershipLevel: partnership
+                                          });
+                                        }}
+                                        disabled={createExhibitorMutation.isPending}
+                                        data-testid={`button-create-exhibitor-${box.key}`}
+                                      >
+                                        <Ticket className="w-3.5 h-3.5" />
+                                        Create Exhibitor + Vouchers
+                                      </Button>
+                                    </div>
+                                  );
+                                })()}
                               </div>
                             </Card>
                           </motion.div>
@@ -496,6 +564,39 @@ export function BoxList({ boxes, pipeline, prevYearStats = {} }: BoxListProps) {
               data-testid="button-confirm-toggle"
             >
               {updateFieldMutation.isPending ? "Updating..." : "Confirm"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Confirmation Dialog for creating Pretix exhibitor */}
+      <AlertDialog open={createConfirmDialog.open} onOpenChange={(open) => {
+        if (!open) setCreateConfirmDialog({ open: false, boxName: "", partnershipLevel: "" });
+      }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Create Exhibitor in Pretix?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will create an exhibitor entry for "{createConfirmDialog.boxName}" in Pretix and generate ticket vouchers for the {createConfirmDialog.partnershipLevel} partnership level.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={createExhibitorMutation.isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                createExhibitorMutation.mutate({
+                  name: createConfirmDialog.boxName,
+                  partnershipLevel: createConfirmDialog.partnershipLevel
+                }, {
+                  onSuccess: () => {
+                    setCreateConfirmDialog({ open: false, boxName: "", partnershipLevel: "" });
+                  }
+                });
+              }}
+              disabled={createExhibitorMutation.isPending}
+              data-testid="button-confirm-create-exhibitor"
+            >
+              {createExhibitorMutation.isPending ? "Creating..." : "Create Exhibitor"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

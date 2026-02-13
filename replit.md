@@ -4,7 +4,18 @@
 
 StreakFlow is a partnership management dashboard that integrates with the Streak CRM API to visualize and manage partnership deals across multiple pipelines. The application displays pipeline data with stages, boxes (deals), and supports filtering and searching functionality. It's designed for managing Techorama conference partnerships across different countries (Belgium, Netherlands).
 
-## Recent Changes (January 2026)
+## Recent Changes (February 2026)
+
+- **Pretix Exhibitor Integration**: Confirmed partners can be registered as exhibitors in Pretix with automatic voucher creation
+  - Creates exhibitor entry in Pretix with partner name matching
+  - Creates 2 vouchers per exhibitor: 1 Free ticket voucher + 1 Partner ticket voucher
+  - Voucher max_usages based on partnership level (Silver: 1/2, Gold: 2/3, Platinum: 3/4, Ultimate: 5/5)
+  - Exhibitor detail page shows voucher usage, claimed tickets, codes, and progress bars
+  - Pretix API: `https://pretix.eu/api/v1`, Organizer: `techorama-be`, Event: `2026`
+  - Free item ID: 907413, Partner item ID: 907414
+- "Last updated" partner info shown in summary cards and partnership level headers
+
+## Previous Changes (January 2026)
 
 - **Google Authentication** implemented via Replit Auth (OpenID Connect)
   - Domain restriction: Only @techorama.be and @techorama.nl emails allowed
@@ -96,6 +107,11 @@ Preferred communication style: Simple, everyday language.
 - **Streak CRM API**: Primary data source for pipelines and boxes (deals)
   - Base URL: `https://www.streak.com/api/v1`
   - Authentication: Basic Auth with API key (requires `STREAK_API_KEY` environment variable)
+- **Pretix API**: Ticket platform for exhibitor and voucher management
+  - Base URL: `https://pretix.eu/api/v1`
+  - Authentication: Token-based (requires `PRETIX_API_KEY` environment variable)
+  - Organizer: `techorama-be`, Event: `2026`
+  - Service module: `server/pretix.ts`
 
 ### Database
 - **PostgreSQL**: Primary database for application data
@@ -115,3 +131,4 @@ Preferred communication style: Simple, everyday language.
 - `DATABASE_URL`: PostgreSQL connection string
 - `STREAK_API_KEY`: Streak CRM API authentication key (Belgium organization)
 - `STREAK_API_KEY_NL`: Streak CRM API authentication key (Netherlands organization)
+- `PRETIX_API_KEY`: Pretix API token for exhibitor and voucher management
