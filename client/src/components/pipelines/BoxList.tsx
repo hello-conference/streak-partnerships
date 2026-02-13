@@ -3,7 +3,7 @@ import { StatusBadge } from "@/components/ui/StatusBadge";
 import { format } from "date-fns";
 import { Card } from "@/components/ui/card";
 import { motion } from "framer-motion";
-import { Calendar, ChevronDown, Mail, DollarSign, CheckCircle2, XCircle, Ticket, Loader2, ExternalLink } from "lucide-react";
+import { Calendar, ChevronDown, Mail, DollarSign, CheckCircle2, XCircle, Ticket, Loader2 } from "lucide-react";
 import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -460,8 +460,7 @@ export function BoxList({ boxes, pipeline, prevYearStats = {} }: BoxListProps) {
                                           data-testid={`link-exhibitor-${box.key}`}
                                         >
                                           <Ticket className="w-3.5 h-3.5" />
-                                          Exhibitor in Pretix
-                                          <ExternalLink className="w-3 h-3" />
+                                          Exhibitor Tickets
                                         </Link>
                                         <div className="flex items-center gap-2">
                                           {ft > 0 && (
