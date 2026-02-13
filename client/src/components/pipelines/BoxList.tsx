@@ -626,7 +626,7 @@ export function BoxList({ boxes, pipeline, prevYearStats = {} }: BoxListProps) {
           <AlertDialogHeader>
             <AlertDialogTitle>Create Exhibitor in Pretix?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will create an exhibitor entry for "{createConfirmDialog.boxName}" in Pretix and generate ticket vouchers for the {createConfirmDialog.partnershipLevel} partnership level.
+              This will create an exhibitor entry for "{createConfirmDialog.boxName}" in Pretix and generate 3 vouchers: Free tickets, Partner tickets, and Knight tickets (20x at fixed price) for the {createConfirmDialog.partnershipLevel} partnership level.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

@@ -3,6 +3,8 @@ const ORGANIZER = "techorama-be";
 const EVENT = "2026";
 const FREE_ITEM_ID = 907413;
 const PARTNER_ITEM_ID = 907414;
+const KNIGHT_TICKET_PRICE = "775.00";
+const KNIGHT_TICKET_MAX_USAGES = 20;
 
 export const VOUCHER_ALLOCATIONS: Record<string, { free: number; partner: number }> = {
   "Silver": { free: 1, partner: 2 },
@@ -124,15 +126,33 @@ export async function createVouchersForExhibitor(
     }
   );
 
-  const vouchers = [freeVoucher, partnerVoucher];
+  const knightItemId = await findKnightItemId();
+  const knightVoucher = await pretixFetch(
+    `/organizers/${ORGANIZER}/events/${EVENT}/vouchers/`,
+    "POST",
+    {
+      code: generateVoucherCode(partnerName),
+      max_usages: KNIGHT_TICKET_MAX_USAGES,
+      price_mode: "set",
+      value: KNIGHT_TICKET_PRICE,
+      item: knightItemId,
+      tag: `${slug}-paid`,
+      comment: `Knight ticket voucher for ${partnerName} (${partnershipLevel})`,
+    }
+  );
+
+  const vouchers = [freeVoucher, partnerVoucher, knightVoucher];
 
   for (const voucher of vouchers) {
+    let label = "Knight";
+    if (voucher.id === freeVoucher.id) label = "Free";
+    else if (voucher.id === partnerVoucher.id) label = "Partner";
     await pretixFetch(
       `/organizers/${ORGANIZER}/events/${EVENT}/exhibitors/${exhibitorId}/vouchers/attach/`,
       "POST",
       {
         id: voucher.id,
-        exhibitor_comment: `${partnershipLevel} - ${voucher.id === freeVoucher.id ? "Free" : "Partner"} ticket`,
+        exhibitor_comment: `${partnershipLevel} - ${label} ticket`,
       }
     );
   }
@@ -171,6 +191,20 @@ export async function getExhibitorVouchers(exhibitorId: number): Promise<any[]> 
   );
 
   return fullVouchers;
+}
+
+export async function findKnightItemId(): Promise<number> {
+  const items = await listItems();
+  const knightItem = items.find((item: any) => {
+    const name = typeof item.name === "object"
+      ? (item.name.en || Object.values(item.name)[0] || "")
+      : (item.name || "");
+    return (name as string).toLowerCase().includes("knight");
+  });
+  if (!knightItem) {
+    throw new Error("Knight ticket item not found in Pretix");
+  }
+  return knightItem.id;
 }
 
 export async function listItems(): Promise<any[]> {
