@@ -84,6 +84,23 @@ export function useCreateExhibitor() {
   });
 }
 
+export function useTicketSummary() {
+  return useQuery({
+    queryKey: ['/api/pretix/ticket-summary'],
+    staleTime: 30000,
+    queryFn: async () => {
+      const res = await fetch(api.pretix.getTicketSummary.path, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch ticket summary");
+      return res.json() as Promise<{
+        freeConference: { total: number; claimed: number };
+        partner: { total: number; claimed: number };
+        paid: { total: number; claimed: number };
+        paidRevenue: number;
+      }>;
+    },
+  });
+}
+
 export function useCreateMissingExhibitors() {
   return useMutation({
     mutationFn: async (data: { partners: { name: string; partnershipLevel: string }[] }) => {

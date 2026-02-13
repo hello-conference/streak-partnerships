@@ -610,6 +610,53 @@ export async function registerRoutes(
     }
   });
 
+  app.get(api.pretix.getTicketSummary.path, isAuthenticated, isDomainAllowed, async (req: any, res) => {
+    try {
+      const exhibitors = await listExhibitors();
+      const FREE_ITEM_ID = 907413;
+      const PARTNER_ITEM_ID = 907414;
+      let totalFreeConference = 0;
+      let claimedFreeConference = 0;
+      let totalPartner = 0;
+      let claimedPartner = 0;
+      let totalPaid = 0;
+      let claimedPaid = 0;
+      let totalPaidRevenue = 0;
+
+      await Promise.all(
+        exhibitors.map(async (exhibitor: any) => {
+          try {
+            const vouchers = await getExhibitorVouchers(exhibitor.id);
+            for (const v of vouchers) {
+              if (v.item === FREE_ITEM_ID) {
+                totalFreeConference += v.max_usages || 0;
+                claimedFreeConference += v.redeemed || 0;
+              } else if (v.item === PARTNER_ITEM_ID) {
+                totalPartner += v.max_usages || 0;
+                claimedPartner += v.redeemed || 0;
+              } else {
+                totalPaid += v.max_usages || 0;
+                claimedPaid += v.redeemed || 0;
+                const price = parseFloat(v.value || "0");
+                totalPaidRevenue += (v.redeemed || 0) * price;
+              }
+            }
+          } catch {}
+        })
+      );
+
+      res.json({
+        freeConference: { total: totalFreeConference, claimed: claimedFreeConference },
+        partner: { total: totalPartner, claimed: claimedPartner },
+        paid: { total: totalPaid, claimed: claimedPaid },
+        paidRevenue: totalPaidRevenue,
+      });
+    } catch (error: any) {
+      console.error(error);
+      res.status(500).json({ message: error.message || "Failed to compute ticket summary" });
+    }
+  });
+
   app.get(api.pretix.getExhibitorById.path, isAuthenticated, isDomainAllowed, async (req: any, res) => {
     try {
       const { id } = req.params;

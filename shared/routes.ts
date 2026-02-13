@@ -102,6 +102,11 @@ export const api = {
       path: '/api/pretix/items',
       responses: { 200: z.array(z.any()), 500: errorSchemas.internal },
     },
+    getTicketSummary: {
+      method: 'GET' as const,
+      path: '/api/pretix/ticket-summary',
+      responses: { 200: z.any(), 500: errorSchemas.internal },
+    },
   }
 };
 

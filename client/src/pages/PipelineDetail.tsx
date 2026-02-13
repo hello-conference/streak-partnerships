@@ -4,13 +4,14 @@ import { useRoute } from "wouter";
 import { BoxList } from "@/components/pipelines/BoxList";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, Filter, Search, Download } from "lucide-react";
+import { ChevronLeft, Filter, Search, Download, Ticket } from "lucide-react";
 import { Link } from "wouter";
 import { Input } from "@/components/ui/input";
 import { useState, useMemo } from "react";
 import { Card } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { format } from "date-fns";
+import { useTicketSummary } from "@/hooks/use-pretix";
 
 function CountryFlag({ country }: { country: "BE" | "NL" }) {
   if (country === "BE") {
@@ -38,6 +39,7 @@ export default function PipelineDetail() {
   const { data: boxes, isLoading: isBoxesLoading } = usePipelineBoxes(key);
   const { data: allPipelines, isLoading: isPipelinesLoading } = usePipelines();
   
+  const { data: ticketSummary } = useTicketSummary();
   const [search, setSearch] = useState("");
 
   const prevYearPipelineKey = useMemo(() => {
@@ -284,6 +286,48 @@ export default function PipelineDetail() {
                 )}
               </Card>
             </div>
+
+            {ticketSummary && (
+              <Card className="p-4 border border-border/50" data-testid="card-ticket-summary">
+                <div className="flex items-center gap-2 mb-3">
+                  <Ticket className="w-4 h-4 text-muted-foreground" />
+                  <span className="text-sm font-semibold text-foreground">Ticket Summary</span>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                  <div>
+                    <div className="text-xs text-muted-foreground mb-1">Free Conference Tickets</div>
+                    <div className="text-lg font-bold text-foreground" data-testid="text-free-conference-tickets">
+                      {ticketSummary.freeConference.claimed}
+                      <span className="text-sm text-muted-foreground font-normal"> / {ticketSummary.freeConference.total}</span>
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-xs text-muted-foreground mb-1">Partner Tickets</div>
+                    <div className="text-lg font-bold text-foreground" data-testid="text-partner-tickets">
+                      {ticketSummary.partner.claimed}
+                      <span className="text-sm text-muted-foreground font-normal"> / {ticketSummary.partner.total}</span>
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-xs text-muted-foreground mb-1">Extra Paid Tickets</div>
+                    <div className="text-lg font-bold text-foreground" data-testid="text-paid-tickets">
+                      {ticketSummary.paid.claimed}
+                      <span className="text-sm text-muted-foreground font-normal"> / {ticketSummary.paid.total}</span>
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-xs text-muted-foreground mb-1">Extra Ticket Revenue</div>
+                    <div className="text-lg font-bold text-foreground" data-testid="text-ticket-revenue">
+                      <span className={ticketSummary.paidRevenue > 0 ? "text-green-600 dark:text-green-400" : ""}>
+                        {formatEuro(ticketSummary.paidRevenue)}
+                      </span>
+                      <span className="text-xs text-muted-foreground font-normal ml-1">excl. VAT</span>
+                    </div>
+                  </div>
+                </div>
+              </Card>
+            )}
+
             <Separator className="my-4" />
           </>
         )}
