@@ -9,6 +9,7 @@ import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { buildUrl, api } from "@shared/routes";
 import { useExhibitors, useCreateExhibitor } from "@/hooks/use-pretix";
+import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Link } from "wouter";
@@ -40,6 +41,7 @@ export function BoxList({ boxes, pipeline, prevYearStats = {} }: BoxListProps) {
 
   const { data: exhibitors, isLoading: exhibitorsLoading } = useExhibitors();
   const createExhibitorMutation = useCreateExhibitor();
+  const { toast } = useToast();
 
   const [createConfirmDialog, setCreateConfirmDialog] = useState<{
     open: boolean;
@@ -637,6 +639,18 @@ export function BoxList({ boxes, pipeline, prevYearStats = {} }: BoxListProps) {
                 }, {
                   onSuccess: () => {
                     setCreateConfirmDialog({ open: false, boxName: "", partnershipLevel: "" });
+                    toast({
+                      title: "Exhibitor created",
+                      description: `Successfully created exhibitor and vouchers for "${createConfirmDialog.boxName}".`,
+                    });
+                  },
+                  onError: (error: any) => {
+                    setCreateConfirmDialog({ open: false, boxName: "", partnershipLevel: "" });
+                    toast({
+                      title: "Failed to create exhibitor",
+                      description: error.message || "An unexpected error occurred. Please check Pretix API permissions.",
+                      variant: "destructive",
+                    });
                   }
                 });
               }}
