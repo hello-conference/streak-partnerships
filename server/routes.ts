@@ -491,9 +491,11 @@ export async function registerRoutes(
             let freeClaimed = 0;
             let paidTotal = 0;
             let paidClaimed = 0;
+            const FREE_ITEM_ID = 907413;
             for (const v of vouchers) {
-              const isFree = (v.price_mode === "set" && parseFloat(v.value || "0") === 0)
-                || v.price_mode === "none" || !v.price_mode;
+              const tag = (v.tag || "").toLowerCase();
+              const isFree = v.item === FREE_ITEM_ID
+                || (tag.endsWith("-free") && !tag.endsWith("-free-partner"));
               if (isFree) {
                 freeTotal += v.max_usages || 0;
                 freeClaimed += v.redeemed || 0;

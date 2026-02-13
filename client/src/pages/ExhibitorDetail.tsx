@@ -26,9 +26,12 @@ function getItemBadgeLabel(itemId: number | null, itemsMap: Record<number, strin
   return words.length > 2 ? words.slice(0, 2).join(" ") : name;
 }
 
+const FREE_ITEM_ID = 907413;
+
 function isVoucherFree(voucher: any): boolean {
-  if (voucher.price_mode === "set" && parseFloat(voucher.value || "0") === 0) return true;
-  if (voucher.price_mode === "none" || !voucher.price_mode) return true;
+  if (voucher.item === FREE_ITEM_ID) return true;
+  const tag = (voucher.tag || "").toLowerCase();
+  if (tag.endsWith("-free") && !tag.endsWith("-free-partner")) return true;
   return false;
 }
 
