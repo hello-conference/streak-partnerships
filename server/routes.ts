@@ -700,5 +700,42 @@ export async function registerRoutes(
     }
   });
 
+  app.get(api.pretix.getEmailLogs.path, isAuthenticated, isDomainAllowed, async (req: any, res) => {
+    try {
+      const org = parseOrg(req);
+      const { id } = req.params;
+      const logs = await storage.getEmailLogsByExhibitor(org, String(id));
+      res.json(logs);
+    } catch (error: any) {
+      console.error(error);
+      res.status(500).json({ message: error.message || "Failed to fetch email logs" });
+    }
+  });
+
+  app.post(api.pretix.createEmailLog.path, isAuthenticated, isDomainAllowed, async (req: any, res) => {
+    try {
+      const org = parseOrg(req);
+      const { id } = req.params;
+      const { sentTo, subject, exhibitorName } = req.body;
+      if (!sentTo || !subject || !exhibitorName) {
+        return res.status(400).json({ message: "sentTo, subject, and exhibitorName are required" });
+      }
+      const user = req.user as any;
+      const sentBy = user?.claims?.email || "unknown";
+      const log = await storage.createEmailLog({
+        org,
+        exhibitorId: String(id),
+        exhibitorName,
+        sentTo,
+        sentBy,
+        subject,
+      });
+      res.status(201).json(log);
+    } catch (error: any) {
+      console.error(error);
+      res.status(500).json({ message: error.message || "Failed to create email log" });
+    }
+  });
+
   return httpServer;
 }

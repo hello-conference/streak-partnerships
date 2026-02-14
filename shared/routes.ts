@@ -107,6 +107,16 @@ export const api = {
       path: '/api/pretix/:org/ticket-summary',
       responses: { 200: z.any(), 500: errorSchemas.internal },
     },
+    getEmailLogs: {
+      method: 'GET' as const,
+      path: '/api/pretix/:org/exhibitors/:id/email-logs',
+      responses: { 200: z.array(z.any()), 500: errorSchemas.internal },
+    },
+    createEmailLog: {
+      method: 'POST' as const,
+      path: '/api/pretix/:org/exhibitors/:id/email-logs',
+      responses: { 201: z.any(), 400: errorSchemas.badRequest, 500: errorSchemas.internal },
+    },
   }
 };
 

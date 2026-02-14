@@ -1,8 +1,25 @@
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
+import { pgTable, serial, varchar, timestamp, text } from "drizzle-orm/pg-core";
 
 // Export auth models for Replit Auth integration
 export * from "./models/auth";
+
+// === Email Log Table ===
+export const emailLogs = pgTable("email_logs", {
+  id: serial("id").primaryKey(),
+  org: varchar("org", { length: 10 }).notNull(),
+  exhibitorId: varchar("exhibitor_id", { length: 50 }).notNull(),
+  exhibitorName: varchar("exhibitor_name", { length: 255 }).notNull(),
+  sentTo: varchar("sent_to", { length: 255 }).notNull(),
+  sentBy: varchar("sent_by", { length: 255 }).notNull(),
+  subject: varchar("subject", { length: 500 }).notNull(),
+  sentAt: timestamp("sent_at").defaultNow().notNull(),
+});
+
+export const insertEmailLogSchema = createInsertSchema(emailLogs).omit({ id: true, sentAt: true });
+export type InsertEmailLog = z.infer<typeof insertEmailLogSchema>;
+export type EmailLog = typeof emailLogs.$inferSelect;
 
 // === Streak API Schemas ===
 

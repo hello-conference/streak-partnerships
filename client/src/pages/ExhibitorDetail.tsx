@@ -1,11 +1,11 @@
 import { Shell } from "@/components/layout/Shell";
 import { useRoute } from "wouter";
 import { Link } from "wouter";
-import { useExhibitorById, usePretixItems, type PretixOrg } from "@/hooks/use-pretix";
+import { useExhibitorById, usePretixItems, useEmailLogs, useCreateEmailLog, type PretixOrg } from "@/hooks/use-pretix";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ChevronLeft, Ticket, Copy, Check, CheckCircle2, ChevronDown, ChevronRight, User, Mail, Send } from "lucide-react";
+import { ChevronLeft, Ticket, Copy, Check, CheckCircle2, ChevronDown, ChevronRight, User, Mail, Send, Clock, History } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState, useMemo } from "react";
 import {
@@ -172,6 +172,7 @@ Techorama Team`;
 
 function SendTicketEmailDialog({
   exhibitorName,
+  exhibitorId,
   accessCode,
   vouchers,
   itemsMap,
@@ -181,6 +182,7 @@ function SendTicketEmailDialog({
   defaultContactName,
 }: {
   exhibitorName: string;
+  exhibitorId: number;
   accessCode: string;
   vouchers: any[];
   itemsMap: Record<number, string>;
@@ -191,6 +193,7 @@ function SendTicketEmailDialog({
 }) {
   const [toEmail, setToEmail] = useState(defaultEmail || "");
   const [open, setOpen] = useState(false);
+  const logEmailMutation = useCreateEmailLog(org, exhibitorId);
 
   const contactFirstName = defaultContactName?.split(" ")[0] || null;
 
@@ -214,6 +217,7 @@ function SendTicketEmailDialog({
   const handleSend = () => {
     const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(toEmail)}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(editableBody)}`;
     window.open(gmailUrl, "_blank");
+    logEmailMutation.mutate({ sentTo: toEmail, subject, exhibitorName });
     setOpen(false);
   };
 
@@ -294,6 +298,7 @@ export default function ExhibitorDetail() {
   const contactEmail = searchParams.get("contactEmail");
   const { data: exhibitor, isLoading, error } = useExhibitorById(org, exhibitorId);
   const { data: items } = usePretixItems(org);
+  const { data: emailLogs } = useEmailLogs(org, exhibitorId);
 
   const itemsMap = useMemo(() => {
     const map: Record<number, string> = {};
@@ -378,6 +383,7 @@ export default function ExhibitorDetail() {
             {exhibitor.access_code && vouchers.length > 0 && (
               <SendTicketEmailDialog
                 exhibitorName={exhibitor.name}
+                exhibitorId={exhibitor.id}
                 accessCode={exhibitor.access_code}
                 vouchers={vouchers}
                 itemsMap={itemsMap}
@@ -619,6 +625,42 @@ export default function ExhibitorDetail() {
                   </Card>
                 );
               })}
+            </div>
+          )}
+
+          {emailLogs && emailLogs.length > 0 && (
+            <div className="mt-6">
+              <div className="flex items-center gap-2 mb-3">
+                <History className="w-4 h-4 text-muted-foreground" />
+                <h3 className="text-sm font-semibold">Email Log</h3>
+                <Badge variant="secondary">{emailLogs.length}</Badge>
+              </div>
+              <Card>
+                <div className="divide-y">
+                  {emailLogs.map((log) => (
+                    <div key={log.id} className="flex items-start gap-3 px-4 py-3" data-testid={`email-log-${log.id}`}>
+                      <Mail className="w-4 h-4 text-muted-foreground mt-0.5 shrink-0" />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-sm font-medium truncate">{log.sentTo}</span>
+                          <span className="text-xs text-muted-foreground">
+                            {new Date(log.sentAt).toLocaleDateString("en-GB", {
+                              day: "numeric",
+                              month: "short",
+                              year: "numeric",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
+                          </span>
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          Sent by {log.sentBy}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </Card>
             </div>
           )}
         </div>

@@ -18,10 +18,17 @@ StreakFlow is a partnership management dashboard that integrates with the Streak
   - NL config: Organizer `techorama-nl`, Event `2026`, API key `PRETIX_API_KEY_NL`, item IDs resolved dynamically
   - Pretix service module: `server/pretix.ts` with `PretixOrg` type and per-org config lookup
 - **Send Ticket Info Email**: Exhibitor detail page has "Send Ticket Info" button that composes email with:
-  - Exhibitor portal URL, access code, and all voucher codes with usage limits
+  - Exhibitor portal URL, access code, and all voucher codes with usage limits and claimed ticket counts
+  - Lead scanning instructions (install app, login with access code, scan QR codes, download results)
+  - Knight ticket price noted as "discounted fixed price for partners"
+  - Contact email: tickets@techorama.be (BE) or tickets@techorama.nl (NL)
   - Pre-filled recipient from primary Streak contact, editable message body
-  - Opens in email client (Gmail/Streak) via mailto: link for automatic CRM tracking
+  - Opens directly in Gmail compose (mail.google.com) for automatic CRM tracking via Streak
   - Supports both BE and NL with correct portal URLs and country names
+- **Email Send Log**: Database-backed log tracking every ticket info email sent
+  - Stored in `email_logs` table with org, exhibitor ID/name, recipient, sender, subject, timestamp
+  - Email history displayed on exhibitor detail page with date, recipient, and sender info
+  - Supports multiple sends to different people in the same partner organization
 - "Last updated" partner info shown in summary cards and partnership level headers
 
 ## Previous Changes (January 2026)

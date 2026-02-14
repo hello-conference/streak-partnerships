@@ -120,3 +120,40 @@ export function useCreateMissingExhibitors(org: PretixOrg) {
     },
   });
 }
+
+export function useEmailLogs(org: PretixOrg, exhibitorId: number | null) {
+  return useQuery({
+    queryKey: ['/api/pretix/email-logs', org, exhibitorId],
+    enabled: !!exhibitorId,
+    queryFn: async () => {
+      if (!exhibitorId) throw new Error("ID is required");
+      const url = buildUrl(api.pretix.getEmailLogs.path, { org, id: exhibitorId });
+      const res = await fetch(url, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch email logs");
+      return res.json() as Promise<Array<{
+        id: number;
+        org: string;
+        exhibitorId: string;
+        exhibitorName: string;
+        sentTo: string;
+        sentBy: string;
+        subject: string;
+        sentAt: string;
+      }>>;
+    },
+  });
+}
+
+export function useCreateEmailLog(org: PretixOrg, exhibitorId: number | null) {
+  return useMutation({
+    mutationFn: async (data: { sentTo: string; subject: string; exhibitorName: string }) => {
+      if (!exhibitorId) throw new Error("ID is required");
+      const url = buildUrl(api.pretix.createEmailLog.path, { org, id: exhibitorId });
+      const res = await apiRequest("POST", url, data);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/pretix/email-logs', org, exhibitorId] });
+    },
+  });
+}
