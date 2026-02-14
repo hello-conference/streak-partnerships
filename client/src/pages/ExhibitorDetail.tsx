@@ -880,10 +880,16 @@ export default function ExhibitorDetail() {
                 <div className="divide-y">
                   {emailLogs.map((log) => (
                     <div key={log.id} className="flex items-start gap-3 px-4 py-3" data-testid={`email-log-${log.id}`}>
-                      <Mail className="w-4 h-4 text-muted-foreground mt-0.5 shrink-0" />
+                      <Mail className="w-4 h-4 text-muted-foreground mt-1 shrink-0" />
                       <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="text-sm font-medium truncate">{log.sentTo}</span>
+                        <p className="text-sm font-medium" data-testid={`email-log-subject-${log.id}`}>{log.subject}</p>
+                        <div className="flex items-center gap-2 flex-wrap mt-1">
+                          <span className="text-xs text-muted-foreground">To:</span>
+                          <span className="text-xs" data-testid={`email-log-to-${log.id}`}>{log.sentTo}</span>
+                        </div>
+                        <div className="flex items-center gap-2 flex-wrap mt-0.5">
+                          <span className="text-xs text-muted-foreground">From:</span>
+                          <span className="text-xs" data-testid={`email-log-from-${log.id}`}>{log.sentBy}</span>
                           <span className="text-xs text-muted-foreground">
                             {new Date(log.sentAt).toLocaleDateString("en-GB", {
                               day: "numeric",
@@ -894,9 +900,6 @@ export default function ExhibitorDetail() {
                             })}
                           </span>
                         </div>
-                        <p className="text-xs text-muted-foreground mt-0.5">
-                          Sent by {log.sentBy}
-                        </p>
                       </div>
                     </div>
                   ))}
