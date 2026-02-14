@@ -456,7 +456,17 @@ export function BoxList({ boxes, pipeline, prevYearStats = {} }: BoxListProps) {
                                     return (
                                       <div className="flex items-center justify-between gap-2 pt-1 border-t border-border/30">
                                         <Link
-                                          href={`/pipelines/${pipeline.key}/exhibitors/${exhibitor.id}?level=${encodeURIComponent(partnership)}&org=${org}`}
+                                          href={`/pipelines/${pipeline.key}/exhibitors/${exhibitor.id}?level=${encodeURIComponent(partnership)}&org=${org}${(() => {
+                                            const contacts = (box as any).contacts || [];
+                                            if (contacts.length > 0) {
+                                              const c = contacts[0];
+                                              const params = new URLSearchParams();
+                                              if (c.name) params.set("contactName", c.name);
+                                              if (c.email) params.set("contactEmail", c.email);
+                                              return "&" + params.toString();
+                                            }
+                                            return "";
+                                          })()}`}
                                           className="flex items-center gap-1.5 text-xs text-green-600 dark:text-green-400 hover:underline"
                                           data-testid={`link-exhibitor-${box.key}`}
                                         >

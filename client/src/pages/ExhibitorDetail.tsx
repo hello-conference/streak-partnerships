@@ -5,7 +5,7 @@ import { useExhibitorById, usePretixItems, type PretixOrg } from "@/hooks/use-pr
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ChevronLeft, Ticket, Copy, Check, CheckCircle2, ChevronDown, ChevronRight, User } from "lucide-react";
+import { ChevronLeft, Ticket, Copy, Check, CheckCircle2, ChevronDown, ChevronRight, User, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState, useMemo } from "react";
 
@@ -90,12 +90,15 @@ export default function ExhibitorDetail() {
   const [, params] = useRoute("/pipelines/:pipelineKey/exhibitors/:id");
   const exhibitorId = params?.id ? parseInt(params.id) : null;
   const pipelineKey = params?.pipelineKey || "";
-  const levelFromUrl = new URLSearchParams(window.location.search).get("level");
+  const searchParams = new URLSearchParams(window.location.search);
+  const levelFromUrl = searchParams.get("level");
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
   const [expandedVouchers, setExpandedVouchers] = useState<Record<number, boolean>>({});
 
-  const orgFromUrl = new URLSearchParams(window.location.search).get("org");
+  const orgFromUrl = searchParams.get("org");
   const org: PretixOrg = (orgFromUrl === "nl" ? "nl" : "be");
+  const contactName = searchParams.get("contactName");
+  const contactEmail = searchParams.get("contactEmail");
   const { data: exhibitor, isLoading, error } = useExhibitorById(org, exhibitorId);
   const { data: items } = usePretixItems(org);
 
@@ -189,6 +192,28 @@ export default function ExhibitorDetail() {
                 onClick={() => copyToClipboard(exhibitor.access_code!)}
               >
                 {copiedCode === exhibitor.access_code ? (
+                  <Check className="w-3.5 h-3.5 text-green-500" />
+                ) : (
+                  <Copy className="w-3.5 h-3.5" />
+                )}
+              </Button>
+            </div>
+          )}
+          {contactEmail && (
+            <div className="flex items-center gap-2 mt-2">
+              <Mail className="w-4 h-4 text-muted-foreground" />
+              <span className="text-sm text-muted-foreground">
+                {contactName && <span className="font-medium text-foreground">{contactName}</span>}
+                {contactName && " — "}
+                <span>{contactEmail}</span>
+              </span>
+              <Button
+                size="icon"
+                variant="ghost"
+                data-testid="button-copy-contact-email"
+                onClick={() => copyToClipboard(contactEmail)}
+              >
+                {copiedCode === contactEmail ? (
                   <Check className="w-3.5 h-3.5 text-green-500" />
                 ) : (
                   <Copy className="w-3.5 h-3.5" />
