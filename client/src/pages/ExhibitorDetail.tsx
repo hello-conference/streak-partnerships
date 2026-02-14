@@ -5,7 +5,7 @@ import { useExhibitorById, usePretixItems, useEmailLogs, useCreateEmailLog, type
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ChevronLeft, Ticket, Copy, Check, CheckCircle2, ChevronDown, ChevronRight, User, Mail, Send, Clock, History } from "lucide-react";
+import { ChevronLeft, Ticket, Copy, Check, CheckCircle2, ChevronDown, ChevronRight, User, Mail, Send, Clock, History, ScanLine } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState, useMemo } from "react";
 import {
@@ -283,6 +283,236 @@ function SendTicketEmailDialog({
   );
 }
 
+function getFreeVoucherAttendeeEmails(vouchers: any[]): string[] {
+  const emails: string[] = [];
+  for (const v of vouchers) {
+    if (!isVoucherFree(v)) continue;
+    if (!v.order_positions || v.order_positions.length === 0) continue;
+    for (const pos of v.order_positions) {
+      const email = pos.attendee_email;
+      if (email && !emails.includes(email.toLowerCase())) {
+        emails.push(email.toLowerCase());
+      }
+    }
+  }
+  return emails;
+}
+
+function buildLeadScanEmailBody(
+  exhibitorName: string,
+  accessCode: string,
+  org: PretixOrg,
+  contactFirstName: string | null,
+): string {
+  const portalUrl = getPretixPortalUrl(org);
+  const greeting = contactFirstName ? `Dear ${contactFirstName}` : "Dear partner";
+  const country = org === "nl" ? "Netherlands" : "Belgium";
+  const contactEmail = org === "nl" ? "tickets@techorama.nl" : "tickets@techorama.be";
+
+  return `${greeting},
+
+You are receiving this email because you have been registered as an attendee for Techorama ${country} 2026 as part of the ${exhibitorName} partnership.
+
+As a partner attendee, you have access to the lead scanning functionality at Techorama. Lead scanning allows you to capture contact details of attendees who visit your booth by scanning their badge QR code.
+
+HOW TO USE LEAD SCANNING
+
+1. Install the "pretixLEAD" app on your phone
+   - iOS: https://apps.apple.com/app/pretixlead/id1459533296
+   - Android: https://play.google.com/store/apps/details?id=eu.pretix.pretixlead
+
+2. Open the app and select "Login by access code"
+
+3. Enter your access code: ${accessCode}
+
+4. You are now ready to scan! Simply tap the scan button and point your camera at the QR code on an attendee's badge.
+
+5. After scanning, you can add notes about the conversation for follow-up.
+
+ACCESSING YOUR SCANNED LEADS
+
+You can download your scanned leads at any time:
+- Go to ${portalUrl}
+- Enter your access code: ${accessCode}
+- Navigate to the "Leads" section
+- Download the results as a CSV or Excel file
+
+TIPS FOR EFFECTIVE LEAD SCANNING
+- Make sure to scan every visitor at your booth
+- Add a short note after each scan to remember the conversation
+- Download your leads regularly during and after the event
+- The app works offline - scans will sync when you're back online
+
+If you have any questions or need assistance, don't hesitate to reach out to ${contactEmail}.
+
+Kind regards,
+Techorama Team`;
+}
+
+function SendLeadScanEmailDialog({
+  exhibitorName,
+  exhibitorId,
+  accessCode,
+  vouchers,
+  org,
+  defaultEmail,
+  defaultContactName,
+}: {
+  exhibitorName: string;
+  exhibitorId: number;
+  accessCode: string;
+  vouchers: any[];
+  org: PretixOrg;
+  defaultEmail: string | null;
+  defaultContactName: string | null;
+}) {
+  const [open, setOpen] = useState(false);
+  const logEmailMutation = useCreateEmailLog(org, exhibitorId);
+
+  const contactFirstName = defaultContactName?.split(" ")[0] || null;
+
+  const attendeeEmails = useMemo(() => getFreeVoucherAttendeeEmails(vouchers), [vouchers]);
+
+  const allRecipients = useMemo(() => {
+    const recipients: string[] = [];
+    if (defaultEmail) {
+      recipients.push(defaultEmail.toLowerCase());
+    }
+    for (const email of attendeeEmails) {
+      if (!recipients.includes(email)) {
+        recipients.push(email);
+      }
+    }
+    return recipients;
+  }, [defaultEmail, attendeeEmails]);
+
+  const [recipients, setRecipients] = useState<string[]>(allRecipients);
+
+  const subject = `Techorama ${org === "nl" ? "Netherlands" : "Belgium"} 2026 - Lead Scanning Info for ${exhibitorName}`;
+
+  const body = useMemo(
+    () => buildLeadScanEmailBody(exhibitorName, accessCode, org, contactFirstName),
+    [exhibitorName, accessCode, org, contactFirstName]
+  );
+
+  const [editableBody, setEditableBody] = useState(body);
+
+  const handleOpen = (isOpen: boolean) => {
+    if (isOpen) {
+      setEditableBody(body);
+      setRecipients(allRecipients);
+    }
+    setOpen(isOpen);
+  };
+
+  const handleSend = () => {
+    const toField = recipients.join(",");
+    const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(toField)}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(editableBody)}`;
+    window.open(gmailUrl, "_blank");
+    logEmailMutation.mutate({ sentTo: toField, subject, exhibitorName });
+    setOpen(false);
+  };
+
+  const removeRecipient = (email: string) => {
+    setRecipients(prev => prev.filter(e => e !== email));
+  };
+
+  const [newRecipient, setNewRecipient] = useState("");
+  const addRecipient = () => {
+    const email = newRecipient.trim().toLowerCase();
+    if (email && !recipients.includes(email)) {
+      setRecipients(prev => [...prev, email]);
+      setNewRecipient("");
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={handleOpen}>
+      <DialogTrigger asChild>
+        <Button variant="outline" data-testid="button-send-lead-scan-email">
+          <ScanLine className="w-4 h-4 mr-2" />
+          Send Lead Scanning Info
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Send Lead Scanning Info</DialogTitle>
+          <DialogDescription>
+            Send lead scanning instructions to the primary contact and all partner attendees. This will open in Gmail for automatic CRM tracking.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="flex flex-col gap-4 py-2">
+          <div className="flex flex-col gap-2">
+            <Label>To ({recipients.length} recipient{recipients.length !== 1 ? "s" : ""})</Label>
+            <div className="flex flex-wrap gap-1.5">
+              {recipients.map((email) => (
+                <Badge key={email} variant="secondary" className="text-xs gap-1 pr-1">
+                  {email}
+                  <button
+                    onClick={() => removeRecipient(email)}
+                    className="ml-1 rounded-full p-0.5 hover:bg-muted"
+                    data-testid={`button-remove-recipient-${email}`}
+                  >
+                    <span className="text-xs leading-none">&times;</span>
+                  </button>
+                </Badge>
+              ))}
+            </div>
+            <div className="flex items-center gap-2">
+              <Input
+                type="email"
+                value={newRecipient}
+                onChange={(e) => setNewRecipient(e.target.value)}
+                placeholder="Add another recipient..."
+                className="flex-1"
+                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addRecipient(); } }}
+                data-testid="input-add-recipient"
+              />
+              <Button variant="outline" onClick={addRecipient} disabled={!newRecipient.trim()} data-testid="button-add-recipient">
+                Add
+              </Button>
+            </div>
+            {attendeeEmails.length === 0 && (
+              <p className="text-xs text-muted-foreground">
+                No partner attendee emails found yet. Free/partner ticket vouchers have not been redeemed.
+              </p>
+            )}
+          </div>
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="lead-scan-subject">Subject</Label>
+            <Input
+              id="lead-scan-subject"
+              value={subject}
+              readOnly
+              className="text-muted-foreground"
+              data-testid="input-lead-scan-subject"
+            />
+          </div>
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="lead-scan-body">Message</Label>
+            <Textarea
+              id="lead-scan-body"
+              value={editableBody}
+              onChange={(e) => setEditableBody(e.target.value)}
+              className="min-h-[300px] font-mono text-xs"
+              data-testid="textarea-lead-scan-body"
+            />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setOpen(false)} data-testid="button-cancel-lead-scan">
+            Cancel
+          </Button>
+          <Button onClick={handleSend} disabled={recipients.length === 0} data-testid="button-compose-lead-scan">
+            <Mail className="w-4 h-4 mr-2" />
+            Compose in Gmail
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export default function ExhibitorDetail() {
   const [, params] = useRoute("/pipelines/:pipelineKey/exhibitors/:id");
   const exhibitorId = params?.id ? parseInt(params.id) : null;
@@ -381,17 +611,28 @@ export default function ExhibitorDetail() {
           <div className="flex items-center justify-between gap-4 flex-wrap">
             <p className="text-muted-foreground">Voucher usage and ticket assignment details from Pretix.</p>
             {exhibitor.access_code && vouchers.length > 0 && (
-              <SendTicketEmailDialog
-                exhibitorName={exhibitor.name}
-                exhibitorId={exhibitor.id}
-                accessCode={exhibitor.access_code}
-                vouchers={vouchers}
-                itemsMap={itemsMap}
-                partnershipLevel={partnershipLevel}
-                org={org}
-                defaultEmail={contactEmail}
-                defaultContactName={contactName}
-              />
+              <div className="flex items-center gap-2 flex-wrap">
+                <SendTicketEmailDialog
+                  exhibitorName={exhibitor.name}
+                  exhibitorId={exhibitor.id}
+                  accessCode={exhibitor.access_code}
+                  vouchers={vouchers}
+                  itemsMap={itemsMap}
+                  partnershipLevel={partnershipLevel}
+                  org={org}
+                  defaultEmail={contactEmail}
+                  defaultContactName={contactName}
+                />
+                <SendLeadScanEmailDialog
+                  exhibitorName={exhibitor.name}
+                  exhibitorId={exhibitor.id}
+                  accessCode={exhibitor.access_code}
+                  vouchers={vouchers}
+                  org={org}
+                  defaultEmail={contactEmail}
+                  defaultContactName={contactName}
+                />
+              </div>
             )}
           </div>
           {exhibitor.access_code && (

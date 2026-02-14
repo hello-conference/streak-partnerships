@@ -25,7 +25,13 @@ StreakFlow is a partnership management dashboard that integrates with the Streak
   - Pre-filled recipient from primary Streak contact, editable message body
   - Opens directly in Gmail compose (mail.google.com) for automatic CRM tracking via Streak
   - Supports both BE and NL with correct portal URLs and country names
-- **Email Send Log**: Database-backed log tracking every ticket info email sent
+- **Send Lead Scanning Info Email**: Dedicated button to send lead scanning instructions to partner attendees
+  - Recipients auto-populated from: primary Streak contact + attendee emails from redeemed free/partner ticket vouchers
+  - Editable recipient list with add/remove functionality
+  - Email includes: pretixLEAD app install links (iOS + Android), access code, login instructions, scanning guide, portal URL for downloading leads, tips
+  - Opens in Gmail compose with all recipients in To field
+  - Backend fetches order positions for all redeemed vouchers (free + paid) to extract attendee emails
+- **Email Send Log**: Database-backed log tracking every ticket info and lead scanning email sent
   - Stored in `email_logs` table with org, exhibitor ID/name, recipient, sender, subject, timestamp
   - Email history displayed on exhibitor detail page with date, recipient, and sender info
   - Supports multiple sends to different people in the same partner organization

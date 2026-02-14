@@ -676,10 +676,7 @@ export async function registerRoutes(
       const vouchers = await getExhibitorVouchers(org, parseInt(id));
       const vouchersWithPositions = await Promise.all(
         vouchers.map(async (voucher: any) => {
-          const isFree = (voucher.price_mode === "set" && parseFloat(voucher.value || "0") === 0)
-            || voucher.price_mode === "none" || !voucher.price_mode;
-          const isPaid = !isFree;
-          if (isPaid && voucher.redeemed > 0) {
+          if (voucher.redeemed > 0) {
             try {
               const positions = await getOrderPositionsByVoucher(org, voucher.id);
               return { ...voucher, order_positions: positions };
