@@ -17,6 +17,11 @@ StreakFlow is a partnership management dashboard that integrates with the Streak
   - BE config: Organizer `techorama-be`, Event `2026`, API key `PRETIX_API_KEY`, Free item 907413, Partner item 907414
   - NL config: Organizer `techorama-nl`, Event `2026`, API key `PRETIX_API_KEY_NL`, item IDs resolved dynamically
   - Pretix service module: `server/pretix.ts` with `PretixOrg` type and per-org config lookup
+- **Send Ticket Info Email**: Exhibitor detail page has "Send Ticket Info" button that composes email with:
+  - Exhibitor portal URL, access code, and all voucher codes with usage limits
+  - Pre-filled recipient from primary Streak contact, editable message body
+  - Opens in email client (Gmail/Streak) via mailto: link for automatic CRM tracking
+  - Supports both BE and NL with correct portal URLs and country names
 - "Last updated" partner info shown in summary cards and partnership level headers
 
 ## Previous Changes (January 2026)

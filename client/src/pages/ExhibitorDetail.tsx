@@ -5,9 +5,21 @@ import { useExhibitorById, usePretixItems, type PretixOrg } from "@/hooks/use-pr
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ChevronLeft, Ticket, Copy, Check, CheckCircle2, ChevronDown, ChevronRight, User, Mail } from "lucide-react";
+import { ChevronLeft, Ticket, Copy, Check, CheckCircle2, ChevronDown, ChevronRight, User, Mail, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState, useMemo } from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 
 function getItemName(itemId: number | null, itemsMap: Record<number, string>): string {
   if (!itemId) return "General";
@@ -84,6 +96,172 @@ function getPartnershipBadgeColor(level: string): string {
     case "silver": return "bg-gray-400 text-white dark:bg-gray-300 dark:text-gray-800";
     default: return "";
   }
+}
+
+function getPretixPortalUrl(org: PretixOrg): string {
+  const organizer = org === "nl" ? "techorama-nl" : "techorama-be";
+  return `https://pretix.eu/${organizer}/2026/`;
+}
+
+function buildEmailBody(
+  exhibitorName: string,
+  accessCode: string,
+  vouchers: any[],
+  itemsMap: Record<number, string>,
+  partnershipLevel: string | null,
+  org: PretixOrg,
+  contactFirstName: string | null,
+): string {
+  const portalUrl = getPretixPortalUrl(org);
+  const greeting = contactFirstName ? `Dear ${contactFirstName}` : "Dear partner";
+  const country = org === "nl" ? "Netherlands" : "Belgium";
+
+  const voucherLines = vouchers.map((v: any) => {
+    const label = getItemBadgeLabel(v.item, itemsMap);
+    const isFree = isVoucherFree(v);
+    const maxUsages = v.max_usages || 0;
+    const priceInfo = isFree ? "Free" : formatPrice(v) || "Paid";
+    return `  - ${label} (${priceInfo}): ${v.code} (${maxUsages} ticket${maxUsages !== 1 ? "s" : ""})`;
+  }).join("\n");
+
+  return `${greeting},
+
+Thank you for your ${partnershipLevel ? partnershipLevel + " " : ""}partnership with Techorama ${country} 2026!
+
+As part of your partnership package, we have set up your exhibitor account on our ticketing platform (Pretix). Below you will find your access credentials and voucher codes to claim your included tickets.
+
+EXHIBITOR PORTAL
+${portalUrl}
+
+ACCESS CODE
+${accessCode}
+
+Use this access code to log in to the exhibitor portal where you can manage your booth, scan leads, and access your vouchers.
+
+YOUR VOUCHER CODES
+${voucherLines}
+
+HOW TO CLAIM YOUR TICKETS
+1. Go to ${portalUrl}
+2. Enter your access code: ${accessCode}
+3. Navigate to the voucher section
+4. Use the voucher codes above to claim your tickets
+
+Each voucher code can be used the number of times indicated above. Simply share the relevant voucher code with the people in your team who need a ticket.
+
+If you have any questions or need assistance, don't hesitate to reach out.
+
+Kind regards,
+Techorama Team`;
+}
+
+function SendTicketEmailDialog({
+  exhibitorName,
+  accessCode,
+  vouchers,
+  itemsMap,
+  partnershipLevel,
+  org,
+  defaultEmail,
+  defaultContactName,
+}: {
+  exhibitorName: string;
+  accessCode: string;
+  vouchers: any[];
+  itemsMap: Record<number, string>;
+  partnershipLevel: string | null;
+  org: PretixOrg;
+  defaultEmail: string | null;
+  defaultContactName: string | null;
+}) {
+  const [toEmail, setToEmail] = useState(defaultEmail || "");
+  const [open, setOpen] = useState(false);
+
+  const contactFirstName = defaultContactName?.split(" ")[0] || null;
+
+  const subject = `Techorama ${org === "nl" ? "Netherlands" : "Belgium"} 2026 - Your Exhibitor Access & Ticket Vouchers (${exhibitorName})`;
+
+  const body = useMemo(
+    () => buildEmailBody(exhibitorName, accessCode, vouchers, itemsMap, partnershipLevel, org, contactFirstName),
+    [exhibitorName, accessCode, vouchers, itemsMap, partnershipLevel, org, contactFirstName]
+  );
+
+  const [editableBody, setEditableBody] = useState(body);
+
+  const handleOpen = (isOpen: boolean) => {
+    if (isOpen) {
+      setEditableBody(body);
+      setToEmail(defaultEmail || "");
+    }
+    setOpen(isOpen);
+  };
+
+  const handleSend = () => {
+    const mailtoUrl = `mailto:${encodeURIComponent(toEmail)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(editableBody)}`;
+    window.open(mailtoUrl, "_blank");
+    setOpen(false);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={handleOpen}>
+      <DialogTrigger asChild>
+        <Button variant="default" data-testid="button-send-ticket-email">
+          <Send className="w-4 h-4 mr-2" />
+          Send Ticket Info
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Send Ticket Information</DialogTitle>
+          <DialogDescription>
+            Compose an email with exhibitor access details and voucher codes. This will open in your email client (Gmail/Streak) so the email is automatically tracked.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="flex flex-col gap-4 py-2">
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="email-to">To</Label>
+            <Input
+              id="email-to"
+              type="email"
+              value={toEmail}
+              onChange={(e) => setToEmail(e.target.value)}
+              placeholder="recipient@company.com"
+              data-testid="input-email-to"
+            />
+          </div>
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="email-subject">Subject</Label>
+            <Input
+              id="email-subject"
+              value={subject}
+              readOnly
+              className="text-muted-foreground"
+              data-testid="input-email-subject"
+            />
+          </div>
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="email-body">Message</Label>
+            <Textarea
+              id="email-body"
+              value={editableBody}
+              onChange={(e) => setEditableBody(e.target.value)}
+              className="min-h-[300px] font-mono text-xs"
+              data-testid="textarea-email-body"
+            />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setOpen(false)} data-testid="button-cancel-email">
+            Cancel
+          </Button>
+          <Button onClick={handleSend} disabled={!toEmail.trim()} data-testid="button-compose-email">
+            <Mail className="w-4 h-4 mr-2" />
+            Compose in Email Client
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
 }
 
 export default function ExhibitorDetail() {
@@ -180,7 +358,21 @@ export default function ExhibitorDetail() {
               </Badge>
             )}
           </div>
-          <p className="text-muted-foreground">Voucher usage and ticket assignment details from Pretix.</p>
+          <div className="flex items-center justify-between gap-4 flex-wrap">
+            <p className="text-muted-foreground">Voucher usage and ticket assignment details from Pretix.</p>
+            {exhibitor.access_code && vouchers.length > 0 && (
+              <SendTicketEmailDialog
+                exhibitorName={exhibitor.name}
+                accessCode={exhibitor.access_code}
+                vouchers={vouchers}
+                itemsMap={itemsMap}
+                partnershipLevel={partnershipLevel}
+                org={org}
+                defaultEmail={contactEmail}
+                defaultContactName={contactName}
+              />
+            )}
+          </div>
           {exhibitor.access_code && (
             <div className="flex items-center gap-2 mt-2">
               <span className="text-xs text-muted-foreground">Access Code:</span>
