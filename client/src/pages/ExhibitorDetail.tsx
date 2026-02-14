@@ -197,8 +197,8 @@ function SendTicketEmailDialog({
   };
 
   const handleSend = () => {
-    const mailtoUrl = `mailto:${encodeURIComponent(toEmail)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(editableBody)}`;
-    window.open(mailtoUrl, "_blank");
+    const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(toEmail)}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(editableBody)}`;
+    window.open(gmailUrl, "_blank");
     setOpen(false);
   };
 
