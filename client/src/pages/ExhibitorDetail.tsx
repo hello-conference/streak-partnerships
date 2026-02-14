@@ -116,19 +116,28 @@ function buildEmailBody(
   const greeting = contactFirstName ? `Dear ${contactFirstName}` : "Dear partner";
   const country = org === "nl" ? "Netherlands" : "Belgium";
 
+  const contactEmail = org === "nl" ? "tickets@techorama.nl" : "tickets@techorama.be";
+
   const voucherLines = vouchers.map((v: any) => {
     const label = getItemBadgeLabel(v.item, itemsMap);
     const isFree = isVoucherFree(v);
     const maxUsages = v.max_usages || 0;
-    const priceInfo = isFree ? "Free" : formatPrice(v) || "Paid";
-    return `  - ${label} (${priceInfo}): ${v.code} (${maxUsages} ticket${maxUsages !== 1 ? "s" : ""})`;
+    const redeemed = v.redeemed || 0;
+    const remaining = Math.max(0, maxUsages - redeemed);
+    const claimedInfo = redeemed > 0 ? ` - ${redeemed} already claimed, ${remaining} remaining` : "";
+    const isKnight = label.toLowerCase() === "knight";
+    let priceInfo = isFree ? "Free" : formatPrice(v) || "Paid";
+    if (isKnight && !isFree) {
+      priceInfo = `${formatPrice(v) || "Paid"} - discounted fixed price for partners`;
+    }
+    return `  - ${label} (${priceInfo}): ${v.code} (${maxUsages} ticket${maxUsages !== 1 ? "s" : ""}${claimedInfo})`;
   }).join("\n");
 
   return `${greeting},
 
 Thank you for your ${partnershipLevel ? partnershipLevel + " " : ""}partnership with Techorama ${country} 2026!
 
-As part of your partnership package, we have set up your exhibitor account on our ticketing platform (Pretix). Below you will find your access credentials and voucher codes to claim your included tickets.
+As part of your partnership package, we have set up your exhibitor account on our ticketing platform (Pretix). Below you will find your access credentials, voucher codes to claim your included tickets, and lead scanning instructions.
 
 EXHIBITOR PORTAL
 ${portalUrl}
@@ -149,7 +158,13 @@ HOW TO CLAIM YOUR TICKETS
 
 Each voucher code can be used the number of times indicated above. Simply share the relevant voucher code with the people in your team who need a ticket.
 
-If you have any questions or need assistance, don't hesitate to reach out.
+LEAD SCANNING INFO
+1. Install the Pretix Lead Scan App
+2. Login with your access code
+3. Start scanning the QR code of the attendees at Techorama
+4. Download the results via the portal
+
+If you have any questions or need assistance, don't hesitate to reach out to ${contactEmail}.
 
 Kind regards,
 Techorama Team`;
@@ -179,7 +194,7 @@ function SendTicketEmailDialog({
 
   const contactFirstName = defaultContactName?.split(" ")[0] || null;
 
-  const subject = `Techorama ${org === "nl" ? "Netherlands" : "Belgium"} 2026 - Your Exhibitor Access & Ticket Vouchers (${exhibitorName})`;
+  const subject = `Techorama ${org === "nl" ? "Netherlands" : "Belgium"} 2026 - Your Exhibitor Access, Ticket Vouchers and Lead Scanning Info (${exhibitorName})`;
 
   const body = useMemo(
     () => buildEmailBody(exhibitorName, accessCode, vouchers, itemsMap, partnershipLevel, org, contactFirstName),
