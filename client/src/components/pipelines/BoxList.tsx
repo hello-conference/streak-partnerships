@@ -8,7 +8,7 @@ import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { buildUrl, api } from "@shared/routes";
-import { useExhibitors, useCreateExhibitor, useCreateMissingExhibitors } from "@/hooks/use-pretix";
+import { useExhibitors, useCreateExhibitor, useCreateMissingExhibitors, type PretixOrg } from "@/hooks/use-pretix";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -31,6 +31,7 @@ interface BoxListProps {
 }
 
 export function BoxList({ boxes, pipeline, prevYearStats = {} }: BoxListProps) {
+  const org: PretixOrg = pipeline.name?.includes(" NL") ? "nl" : "be";
   const [expandedSection, setExpandedSection] = useState<number | null>(1);
   const [expandedPartnershipLevels, setExpandedPartnershipLevels] = useState<Record<string, boolean>>({
     "Ultimate": false,
@@ -39,9 +40,9 @@ export function BoxList({ boxes, pipeline, prevYearStats = {} }: BoxListProps) {
     "Silver": false
   });
 
-  const { data: exhibitors, isLoading: exhibitorsLoading } = useExhibitors();
-  const createExhibitorMutation = useCreateExhibitor();
-  const createMissingMutation = useCreateMissingExhibitors();
+  const { data: exhibitors, isLoading: exhibitorsLoading } = useExhibitors(org);
+  const createExhibitorMutation = useCreateExhibitor(org);
+  const createMissingMutation = useCreateMissingExhibitors(org);
   const { toast } = useToast();
 
   const [createConfirmDialog, setCreateConfirmDialog] = useState<{
@@ -455,7 +456,7 @@ export function BoxList({ boxes, pipeline, prevYearStats = {} }: BoxListProps) {
                                     return (
                                       <div className="flex items-center justify-between gap-2 pt-1 border-t border-border/30">
                                         <Link
-                                          href={`/pipelines/${pipeline.key}/exhibitors/${exhibitor.id}?level=${encodeURIComponent(partnership)}`}
+                                          href={`/pipelines/${pipeline.key}/exhibitors/${exhibitor.id}?level=${encodeURIComponent(partnership)}&org=${org}`}
                                           className="flex items-center gap-1.5 text-xs text-green-600 dark:text-green-400 hover:underline"
                                           data-testid={`link-exhibitor-${box.key}`}
                                         >

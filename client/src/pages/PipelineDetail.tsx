@@ -11,7 +11,7 @@ import { useState, useMemo } from "react";
 import { Card } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { format } from "date-fns";
-import { useTicketSummary } from "@/hooks/use-pretix";
+import { useTicketSummary, type PretixOrg } from "@/hooks/use-pretix";
 
 function CountryFlag({ country }: { country: "BE" | "NL" }) {
   if (country === "BE") {
@@ -39,7 +39,8 @@ export default function PipelineDetail() {
   const { data: boxes, isLoading: isBoxesLoading } = usePipelineBoxes(key);
   const { data: allPipelines, isLoading: isPipelinesLoading } = usePipelines();
   
-  const { data: ticketSummary } = useTicketSummary();
+  const pretixOrg: PretixOrg = pipeline?.name?.includes(" NL") ? "nl" : "be";
+  const { data: ticketSummary } = useTicketSummary(pretixOrg);
   const [search, setSearch] = useState("");
 
   const prevYearPipelineKey = useMemo(() => {

@@ -1,10 +1,87 @@
 const PRETIX_BASE = "https://pretix.eu/api/v1";
-const ORGANIZER = "techorama-be";
-const EVENT = "2026";
-const FREE_ITEM_ID = 907413;
-const PARTNER_ITEM_ID = 907414;
 const KNIGHT_TICKET_PRICE = "775.00";
 const KNIGHT_TICKET_MAX_USAGES = 20;
+
+export type PretixOrg = "be" | "nl";
+
+interface PretixOrgConfig {
+  organizer: string;
+  event: string;
+  apiKeyEnv: string;
+  freeItemId: number | null;
+  partnerItemId: number | null;
+}
+
+const ORG_CONFIGS: Record<PretixOrg, PretixOrgConfig> = {
+  be: {
+    organizer: "techorama-be",
+    event: "2026",
+    apiKeyEnv: "PRETIX_API_KEY",
+    freeItemId: 907413,
+    partnerItemId: 907414,
+  },
+  nl: {
+    organizer: "techorama-nl",
+    event: "2026",
+    apiKeyEnv: "PRETIX_API_KEY_NL",
+    freeItemId: null,
+    partnerItemId: null,
+  },
+};
+
+const nlItemCache: { freeItemId: number | null; partnerItemId: number | null; loaded: boolean } = {
+  freeItemId: null,
+  partnerItemId: null,
+  loaded: false,
+};
+
+export function getOrgConfig(org: PretixOrg): PretixOrgConfig {
+  return ORG_CONFIGS[org];
+}
+
+export async function getResolvedItemIds(org: PretixOrg): Promise<{ freeItemId: number; partnerItemId: number }> {
+  const config = ORG_CONFIGS[org];
+  if (config.freeItemId && config.partnerItemId) {
+    return { freeItemId: config.freeItemId, partnerItemId: config.partnerItemId };
+  }
+  if (org === "nl" && nlItemCache.loaded && nlItemCache.freeItemId && nlItemCache.partnerItemId) {
+    return { freeItemId: nlItemCache.freeItemId, partnerItemId: nlItemCache.partnerItemId };
+  }
+  const items = await listItems(org);
+  let freeId: number | null = null;
+  let partnerId: number | null = null;
+  for (const item of items) {
+    const name = typeof item.name === "object"
+      ? (item.name.en || Object.values(item.name)[0] || "")
+      : (item.name || "");
+    const lower = (name as string).toLowerCase();
+    if (!freeId && (
+      lower.includes("free conference") || 
+      lower.includes("conference ticket") || 
+      (lower.includes("free") && lower.includes("ticket")) ||
+      (lower.includes("free") && lower.includes("conference") && !lower.includes("workshop"))
+    )) {
+      freeId = item.id;
+    }
+    if (!partnerId && (
+      lower.includes("partner ticket") || 
+      lower.includes("partner pass") || 
+      (lower.startsWith("partner") && lower.includes("conference") && !lower.includes("workshop")) ||
+      (lower.includes("partner") && !lower.includes("knight") && !lower.includes("free") && !lower.includes("workshop"))
+    )) {
+      partnerId = item.id;
+    }
+  }
+  if (!freeId || !partnerId) {
+    throw new Error(`Could not find free/partner item IDs for ${org.toUpperCase()} org. Items found: ${items.map((i: any) => { const n = typeof i.name === "object" ? (i.name.en || Object.values(i.name)[0]) : i.name; return `${i.id}:${n}`; }).join(", ")}`);
+  }
+  if (org === "nl") {
+    nlItemCache.freeItemId = freeId;
+    nlItemCache.partnerItemId = partnerId;
+    nlItemCache.loaded = true;
+  }
+  return { freeItemId: freeId, partnerItemId: partnerId };
+}
 
 export const VOUCHER_ALLOCATIONS: Record<string, { free: number; partner: number }> = {
   "Silver": { free: 1, partner: 2 },
@@ -13,10 +90,11 @@ export const VOUCHER_ALLOCATIONS: Record<string, { free: number; partner: number
   "Ultimate": { free: 5, partner: 5 },
 };
 
-export async function pretixFetch(path: string, method: string = "GET", body?: any) {
-  const apiKey = process.env.PRETIX_API_KEY;
+export async function pretixFetch(org: PretixOrg, path: string, method: string = "GET", body?: any) {
+  const config = ORG_CONFIGS[org];
+  const apiKey = process.env[config.apiKeyEnv];
   if (!apiKey) {
-    throw new Error("PRETIX_API_KEY environment variable is not set");
+    throw new Error(`${config.apiKeyEnv} environment variable is not set`);
   }
 
   const options: RequestInit = {
@@ -35,19 +113,24 @@ export async function pretixFetch(path: string, method: string = "GET", body?: a
 
   if (!response.ok) {
     const text = await response.text();
-    console.error(`Pretix API Error: ${response.status} ${text}`);
+    console.error(`Pretix API Error (${org}): ${response.status} ${text}`);
     throw new Error(`Pretix API returned ${response.status}: ${text}`);
   }
 
   return response.json();
 }
 
-export async function listExhibitors(): Promise<any[]> {
+function orgPath(org: PretixOrg): string {
+  const config = ORG_CONFIGS[org];
+  return `/organizers/${config.organizer}/events/${config.event}`;
+}
+
+export async function listExhibitors(org: PretixOrg): Promise<any[]> {
   const allExhibitors: any[] = [];
-  let url = `/organizers/${ORGANIZER}/events/${EVENT}/exhibitors/`;
+  let url = `${orgPath(org)}/exhibitors/`;
 
   while (url) {
-    const data = await pretixFetch(url);
+    const data = await pretixFetch(org, url);
     allExhibitors.push(...(data.results || []));
     if (data.next) {
       const nextUrl = new URL(data.next);
@@ -60,12 +143,12 @@ export async function listExhibitors(): Promise<any[]> {
   return allExhibitors;
 }
 
-export async function getExhibitor(id: number): Promise<any> {
-  return pretixFetch(`/organizers/${ORGANIZER}/events/${EVENT}/exhibitors/${id}/`);
+export async function getExhibitor(org: PretixOrg, id: number): Promise<any> {
+  return pretixFetch(org, `${orgPath(org)}/exhibitors/${id}/`);
 }
 
-export async function createExhibitor(name: string): Promise<any> {
-  return pretixFetch(`/organizers/${ORGANIZER}/events/${EVENT}/exhibitors/`, "POST", {
+export async function createExhibitor(org: PretixOrg, name: string): Promise<any> {
+  return pretixFetch(org, `${orgPath(org)}/exhibitors/`, "POST", {
     name,
   });
 }
@@ -87,6 +170,7 @@ function generateVoucherCode(partnerName: string): string {
 }
 
 export async function createVouchersForExhibitor(
+  org: PretixOrg,
   exhibitorId: number,
   partnerName: string,
   partnershipLevel: string
@@ -96,39 +180,44 @@ export async function createVouchersForExhibitor(
     throw new Error(`Invalid partnership level: ${partnershipLevel}`);
   }
 
+  const { freeItemId, partnerItemId } = await getResolvedItemIds(org);
   const slug = generateTagSlug(partnerName);
+  const base = orgPath(org);
 
   const freeVoucher = await pretixFetch(
-    `/organizers/${ORGANIZER}/events/${EVENT}/vouchers/`,
+    org,
+    `${base}/vouchers/`,
     "POST",
     {
       code: generateVoucherCode(partnerName),
       max_usages: allocation.free,
       price_mode: "set",
       value: "0.00",
-      item: FREE_ITEM_ID,
+      item: freeItemId,
       tag: `${slug}-free`,
       comment: `Free ticket voucher for ${partnerName} (${partnershipLevel})`,
     }
   );
 
   const partnerVoucher = await pretixFetch(
-    `/organizers/${ORGANIZER}/events/${EVENT}/vouchers/`,
+    org,
+    `${base}/vouchers/`,
     "POST",
     {
       code: generateVoucherCode(partnerName),
       max_usages: allocation.partner,
       price_mode: "set",
       value: "0.00",
-      item: PARTNER_ITEM_ID,
+      item: partnerItemId,
       tag: `${slug}-free-partner`,
       comment: `Partner ticket voucher for ${partnerName} (${partnershipLevel})`,
     }
   );
 
-  const knightItemId = await findKnightItemId();
+  const knightItemId = await findKnightItemId(org);
   const knightVoucher = await pretixFetch(
-    `/organizers/${ORGANIZER}/events/${EVENT}/vouchers/`,
+    org,
+    `${base}/vouchers/`,
     "POST",
     {
       code: generateVoucherCode(partnerName),
@@ -148,7 +237,8 @@ export async function createVouchersForExhibitor(
     if (voucher.id === freeVoucher.id) label = "Free";
     else if (voucher.id === partnerVoucher.id) label = "Partner";
     await pretixFetch(
-      `/organizers/${ORGANIZER}/events/${EVENT}/exhibitors/${exhibitorId}/vouchers/attach/`,
+      org,
+      `${base}/exhibitors/${exhibitorId}/vouchers/attach/`,
       "POST",
       {
         id: voucher.id,
@@ -160,16 +250,16 @@ export async function createVouchersForExhibitor(
   return vouchers;
 }
 
-export async function getVoucherById(voucherId: number): Promise<any> {
-  return pretixFetch(`/organizers/${ORGANIZER}/events/${EVENT}/vouchers/${voucherId}/`);
+export async function getVoucherById(org: PretixOrg, voucherId: number): Promise<any> {
+  return pretixFetch(org, `${orgPath(org)}/vouchers/${voucherId}/`);
 }
 
-export async function getExhibitorVouchers(exhibitorId: number): Promise<any[]> {
+export async function getExhibitorVouchers(org: PretixOrg, exhibitorId: number): Promise<any[]> {
   const linkedVouchers: any[] = [];
-  let url = `/organizers/${ORGANIZER}/events/${EVENT}/exhibitors/${exhibitorId}/vouchers/`;
+  let url = `${orgPath(org)}/exhibitors/${exhibitorId}/vouchers/`;
 
   while (url) {
-    const data = await pretixFetch(url);
+    const data = await pretixFetch(org, url);
     linkedVouchers.push(...(data.results || []));
     if (data.next) {
       const nextUrl = new URL(data.next);
@@ -182,7 +272,7 @@ export async function getExhibitorVouchers(exhibitorId: number): Promise<any[]> 
   const fullVouchers = await Promise.all(
     linkedVouchers.map(async (stub: any) => {
       try {
-        const full = await getVoucherById(stub.id);
+        const full = await getVoucherById(org, stub.id);
         return { ...full, exhibitor_comment: stub.exhibitor_comment };
       } catch {
         return stub;
@@ -193,8 +283,8 @@ export async function getExhibitorVouchers(exhibitorId: number): Promise<any[]> 
   return fullVouchers;
 }
 
-export async function findKnightItemId(): Promise<number> {
-  const items = await listItems();
+export async function findKnightItemId(org: PretixOrg): Promise<number> {
+  const items = await listItems(org);
   const knightItem = items.find((item: any) => {
     const name = typeof item.name === "object"
       ? (item.name.en || Object.values(item.name)[0] || "")
@@ -202,17 +292,17 @@ export async function findKnightItemId(): Promise<number> {
     return (name as string).toLowerCase().includes("knight");
   });
   if (!knightItem) {
-    throw new Error("Knight ticket item not found in Pretix");
+    throw new Error(`Knight ticket item not found in Pretix for ${org.toUpperCase()}`);
   }
   return knightItem.id;
 }
 
-export async function listItems(): Promise<any[]> {
+export async function listItems(org: PretixOrg): Promise<any[]> {
   const allItems: any[] = [];
-  let url = `/organizers/${ORGANIZER}/events/${EVENT}/items/`;
+  let url = `${orgPath(org)}/items/`;
 
   while (url) {
-    const data = await pretixFetch(url);
+    const data = await pretixFetch(org, url);
     allItems.push(...(data.results || []));
     if (data.next) {
       const nextUrl = new URL(data.next);
@@ -225,12 +315,12 @@ export async function listItems(): Promise<any[]> {
   return allItems;
 }
 
-export async function getOrderPositionsByVoucher(voucherId: number): Promise<any[]> {
+export async function getOrderPositionsByVoucher(org: PretixOrg, voucherId: number): Promise<any[]> {
   const positions: any[] = [];
-  let url = `/organizers/${ORGANIZER}/events/${EVENT}/orderpositions/?voucher=${voucherId}`;
+  let url = `${orgPath(org)}/orderpositions/?voucher=${voucherId}`;
 
   while (url) {
-    const data = await pretixFetch(url);
+    const data = await pretixFetch(org, url);
     positions.push(...(data.results || []));
     if (data.next) {
       const nextUrl = new URL(data.next);
@@ -243,8 +333,8 @@ export async function getOrderPositionsByVoucher(voucherId: number): Promise<any
   return positions;
 }
 
-export async function findExhibitorByName(name: string): Promise<any | null> {
-  const exhibitors = await listExhibitors();
+export async function findExhibitorByName(org: PretixOrg, name: string): Promise<any | null> {
+  const exhibitors = await listExhibitors(org);
   return exhibitors.find(
     (e: any) => e.name?.toLowerCase() === name.toLowerCase()
   ) || null;

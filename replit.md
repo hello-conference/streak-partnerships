@@ -6,13 +6,17 @@ StreakFlow is a partnership management dashboard that integrates with the Streak
 
 ## Recent Changes (February 2026)
 
-- **Pretix Exhibitor Integration**: Confirmed partners can be registered as exhibitors in Pretix with automatic voucher creation
+- **Pretix Exhibitor Integration (Multi-org: BE + NL)**: Confirmed partners can be registered as exhibitors in Pretix with automatic voucher creation
   - Creates exhibitor entry in Pretix with partner name matching
-  - Creates 2 vouchers per exhibitor: 1 Free ticket voucher + 1 Partner ticket voucher
+  - Creates 3 vouchers per exhibitor: Free ticket + Partner ticket + Knight ticket (20 max at fixed price)
   - Voucher max_usages based on partnership level (Silver: 1/2, Gold: 2/3, Platinum: 3/4, Ultimate: 5/5)
   - Exhibitor detail page shows voucher usage, claimed tickets, codes, and progress bars
-  - Pretix API: `https://pretix.eu/api/v1`, Organizer: `techorama-be`, Event: `2026`
-  - Free item ID: 907413, Partner item ID: 907414
+  - Batch creation: "Create missing exhibitors and vouchers" button processes all confirmed partners at once
+  - Partner Ticket Summary card on pipeline page: free conference tickets, partner tickets, extra paid tickets, revenue
+  - Multi-org architecture: all Pretix API routes include `:org` parameter (be/nl)
+  - BE config: Organizer `techorama-be`, Event `2026`, API key `PRETIX_API_KEY`, Free item 907413, Partner item 907414
+  - NL config: Organizer `techorama-nl`, Event `2026`, API key `PRETIX_API_KEY_NL`, item IDs resolved dynamically
+  - Pretix service module: `server/pretix.ts` with `PretixOrg` type and per-org config lookup
 - "Last updated" partner info shown in summary cards and partnership level headers
 
 ## Previous Changes (January 2026)
@@ -131,4 +135,5 @@ Preferred communication style: Simple, everyday language.
 - `DATABASE_URL`: PostgreSQL connection string
 - `STREAK_API_KEY`: Streak CRM API authentication key (Belgium organization)
 - `STREAK_API_KEY_NL`: Streak CRM API authentication key (Netherlands organization)
-- `PRETIX_API_KEY`: Pretix API token for exhibitor and voucher management
+- `PRETIX_API_KEY`: Pretix API token for exhibitor and voucher management (Belgium)
+- `PRETIX_API_KEY_NL`: Pretix API token for exhibitor and voucher management (Netherlands)

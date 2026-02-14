@@ -69,42 +69,42 @@ export const api = {
   pretix: {
     getExhibitors: {
       method: 'GET' as const,
-      path: '/api/pretix/exhibitors',
+      path: '/api/pretix/:org/exhibitors',
       responses: { 200: z.array(z.any()), 500: errorSchemas.internal },
     },
     getExhibitorByName: {
       method: 'GET' as const,
-      path: '/api/pretix/exhibitors/by-name/:name',
+      path: '/api/pretix/:org/exhibitors/by-name/:name',
       responses: { 200: z.any(), 404: errorSchemas.notFound, 500: errorSchemas.internal },
     },
     createExhibitor: {
       method: 'POST' as const,
-      path: '/api/pretix/exhibitors',
+      path: '/api/pretix/:org/exhibitors',
       responses: { 201: z.any(), 400: errorSchemas.badRequest, 500: errorSchemas.internal },
     },
     getExhibitorById: {
       method: 'GET' as const,
-      path: '/api/pretix/exhibitors/:id',
+      path: '/api/pretix/:org/exhibitors/:id',
       responses: { 200: z.any(), 404: errorSchemas.notFound, 500: errorSchemas.internal },
     },
     getExhibitorVouchers: {
       method: 'GET' as const,
-      path: '/api/pretix/exhibitors/:id/vouchers',
+      path: '/api/pretix/:org/exhibitors/:id/vouchers',
       responses: { 200: z.any(), 500: errorSchemas.internal },
     },
     createMissingExhibitors: {
       method: 'POST' as const,
-      path: '/api/pretix/exhibitors/batch',
+      path: '/api/pretix/:org/exhibitors/batch',
       responses: { 200: z.any(), 500: errorSchemas.internal },
     },
     getItems: {
       method: 'GET' as const,
-      path: '/api/pretix/items',
+      path: '/api/pretix/:org/items',
       responses: { 200: z.array(z.any()), 500: errorSchemas.internal },
     },
     getTicketSummary: {
       method: 'GET' as const,
-      path: '/api/pretix/ticket-summary',
+      path: '/api/pretix/:org/ticket-summary',
       responses: { 200: z.any(), 500: errorSchemas.internal },
     },
   }

@@ -1,7 +1,7 @@
 import { Shell } from "@/components/layout/Shell";
 import { useRoute } from "wouter";
 import { Link } from "wouter";
-import { useExhibitorById, usePretixItems } from "@/hooks/use-pretix";
+import { useExhibitorById, usePretixItems, type PretixOrg } from "@/hooks/use-pretix";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -26,13 +26,11 @@ function getItemBadgeLabel(itemId: number | null, itemsMap: Record<number, strin
   return words.length > 2 ? words.slice(0, 2).join(" ") : name;
 }
 
-const FREE_ITEM_ID = 907413;
-const PARTNER_ITEM_ID = 907414;
-
 function isVoucherFree(voucher: any): boolean {
-  if (voucher.item === FREE_ITEM_ID || voucher.item === PARTNER_ITEM_ID) return true;
   const tag = (voucher.tag || "").toLowerCase();
   if (tag.includes("-free")) return true;
+  if (voucher.price_mode === "set" && parseFloat(voucher.value || "0") === 0) return true;
+  if (voucher.price_mode === "none" || !voucher.price_mode) return true;
   return false;
 }
 
@@ -96,8 +94,10 @@ export default function ExhibitorDetail() {
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
   const [expandedVouchers, setExpandedVouchers] = useState<Record<number, boolean>>({});
 
-  const { data: exhibitor, isLoading, error } = useExhibitorById(exhibitorId);
-  const { data: items } = usePretixItems();
+  const orgFromUrl = new URLSearchParams(window.location.search).get("org");
+  const org: PretixOrg = (orgFromUrl === "nl" ? "nl" : "be");
+  const { data: exhibitor, isLoading, error } = useExhibitorById(org, exhibitorId);
+  const { data: items } = usePretixItems(org);
 
   const itemsMap = useMemo(() => {
     const map: Record<number, string> = {};

@@ -5,7 +5,7 @@ import { api } from "@shared/routes";
 import { z } from "zod";
 import { setupAuth, registerAuthRoutes, isAuthenticated } from "./replit_integrations/auth";
 import * as XLSX from "xlsx";
-import { listExhibitors, findExhibitorByName, createExhibitor, createVouchersForExhibitor, getExhibitor, getExhibitorVouchers, listItems, getOrderPositionsByVoucher, VOUCHER_ALLOCATIONS } from "./pretix";
+import { listExhibitors, findExhibitorByName, createExhibitor, createVouchersForExhibitor, getExhibitor, getExhibitorVouchers, listItems, getOrderPositionsByVoucher, VOUCHER_ALLOCATIONS, getResolvedItemIds, type PretixOrg } from "./pretix";
 
 const STREAK_API_BASE = "https://www.streak.com/api/v1";
 
@@ -479,23 +479,29 @@ export async function registerRoutes(
     }
   });
 
-  // Pretix API routes
+  // Pretix API routes - org parameter determines BE or NL
+  function parseOrg(req: any): PretixOrg {
+    const org = req.params.org;
+    if (org !== "be" && org !== "nl") throw new Error("Invalid org");
+    return org;
+  }
+
   app.get(api.pretix.getExhibitors.path, isAuthenticated, isDomainAllowed, async (req: any, res) => {
     try {
-      const exhibitors = await listExhibitors();
+      const org = parseOrg(req);
+      const { freeItemId, partnerItemId } = await getResolvedItemIds(org);
+      const exhibitors = await listExhibitors(org);
       const enriched = await Promise.all(
         exhibitors.map(async (exhibitor: any) => {
           try {
-            const vouchers = await getExhibitorVouchers(exhibitor.id);
+            const vouchers = await getExhibitorVouchers(org, exhibitor.id);
             let freeTotal = 0;
             let freeClaimed = 0;
             let paidTotal = 0;
             let paidClaimed = 0;
-            const FREE_ITEM_ID = 907413;
-            const PARTNER_ITEM_ID = 907414;
             for (const v of vouchers) {
               const tag = (v.tag || "").toLowerCase();
-              const isFree = v.item === FREE_ITEM_ID || v.item === PARTNER_ITEM_ID
+              const isFree = v.item === freeItemId || v.item === partnerItemId
                 || tag.includes("-free");
               if (isFree) {
                 freeTotal += v.max_usages || 0;
@@ -520,12 +526,13 @@ export async function registerRoutes(
 
   app.get(api.pretix.getExhibitorByName.path, isAuthenticated, isDomainAllowed, async (req: any, res) => {
     try {
+      const org = parseOrg(req);
       const { name } = req.params;
-      const exhibitor = await findExhibitorByName(decodeURIComponent(name));
+      const exhibitor = await findExhibitorByName(org, decodeURIComponent(name));
       if (!exhibitor) {
         return res.status(404).json({ message: "Exhibitor not found" });
       }
-      const vouchers = await getExhibitorVouchers(exhibitor.id);
+      const vouchers = await getExhibitorVouchers(org, exhibitor.id);
       res.json({ ...exhibitor, vouchers });
     } catch (error: any) {
       console.error(error);
@@ -535,11 +542,12 @@ export async function registerRoutes(
 
   app.post(api.pretix.createMissingExhibitors.path, isAuthenticated, isDomainAllowed, async (req: any, res) => {
     try {
+      const org = parseOrg(req);
       const { partners } = req.body;
       if (!partners || !Array.isArray(partners) || partners.length === 0) {
         return res.status(400).json({ message: "partners array is required" });
       }
-      const existingExhibitors = await listExhibitors();
+      const existingExhibitors = await listExhibitors(org);
       const existingNames = new Set(existingExhibitors.map((e: any) => e.name?.toLowerCase()));
 
       const results: any[] = [];
@@ -555,8 +563,8 @@ export async function registerRoutes(
           continue;
         }
         try {
-          const exhibitor = await createExhibitor(name);
-          const vouchers = await createVouchersForExhibitor(exhibitor.id, name, partnershipLevel);
+          const exhibitor = await createExhibitor(org, name);
+          const vouchers = await createVouchersForExhibitor(org, exhibitor.id, name, partnershipLevel);
           results.push({ name, exhibitor: { ...exhibitor, vouchers } });
           existingNames.add(name.toLowerCase());
         } catch (err: any) {
@@ -573,6 +581,7 @@ export async function registerRoutes(
 
   app.post(api.pretix.createExhibitor.path, isAuthenticated, isDomainAllowed, async (req: any, res) => {
     try {
+      const org = parseOrg(req);
       const { name, partnershipLevel } = req.body;
       if (!name || !partnershipLevel) {
         return res.status(400).json({ message: "name and partnershipLevel are required" });
@@ -580,8 +589,8 @@ export async function registerRoutes(
       if (!VOUCHER_ALLOCATIONS[partnershipLevel]) {
         return res.status(400).json({ message: `Invalid partnership level: ${partnershipLevel}. Must be one of: ${Object.keys(VOUCHER_ALLOCATIONS).join(", ")}` });
       }
-      const exhibitor = await createExhibitor(name);
-      const vouchers = await createVouchersForExhibitor(exhibitor.id, name, partnershipLevel);
+      const exhibitor = await createExhibitor(org, name);
+      const vouchers = await createVouchersForExhibitor(org, exhibitor.id, name, partnershipLevel);
       res.status(201).json({ ...exhibitor, vouchers });
     } catch (error: any) {
       console.error(error);
@@ -591,8 +600,9 @@ export async function registerRoutes(
 
   app.get(api.pretix.getExhibitorVouchers.path, isAuthenticated, isDomainAllowed, async (req: any, res) => {
     try {
+      const org = parseOrg(req);
       const { id } = req.params;
-      const vouchers = await getExhibitorVouchers(parseInt(id));
+      const vouchers = await getExhibitorVouchers(org, parseInt(id));
       res.json(vouchers);
     } catch (error: any) {
       console.error(error);
@@ -602,7 +612,8 @@ export async function registerRoutes(
 
   app.get(api.pretix.getItems.path, isAuthenticated, isDomainAllowed, async (req: any, res) => {
     try {
-      const items = await listItems();
+      const org = parseOrg(req);
+      const items = await listItems(org);
       res.json(items);
     } catch (error: any) {
       console.error(error);
@@ -612,9 +623,9 @@ export async function registerRoutes(
 
   app.get(api.pretix.getTicketSummary.path, isAuthenticated, isDomainAllowed, async (req: any, res) => {
     try {
-      const exhibitors = await listExhibitors();
-      const FREE_ITEM_ID = 907413;
-      const PARTNER_ITEM_ID = 907414;
+      const org = parseOrg(req);
+      const { freeItemId, partnerItemId } = await getResolvedItemIds(org);
+      const exhibitors = await listExhibitors(org);
       let totalFreeConference = 0;
       let claimedFreeConference = 0;
       let totalPartner = 0;
@@ -626,12 +637,12 @@ export async function registerRoutes(
       await Promise.all(
         exhibitors.map(async (exhibitor: any) => {
           try {
-            const vouchers = await getExhibitorVouchers(exhibitor.id);
+            const vouchers = await getExhibitorVouchers(org, exhibitor.id);
             for (const v of vouchers) {
-              if (v.item === FREE_ITEM_ID) {
+              if (v.item === freeItemId) {
                 totalFreeConference += v.max_usages || 0;
                 claimedFreeConference += v.redeemed || 0;
-              } else if (v.item === PARTNER_ITEM_ID) {
+              } else if (v.item === partnerItemId) {
                 totalPartner += v.max_usages || 0;
                 claimedPartner += v.redeemed || 0;
               } else {
@@ -659,9 +670,10 @@ export async function registerRoutes(
 
   app.get(api.pretix.getExhibitorById.path, isAuthenticated, isDomainAllowed, async (req: any, res) => {
     try {
+      const org = parseOrg(req);
       const { id } = req.params;
-      const exhibitor = await getExhibitor(parseInt(id));
-      const vouchers = await getExhibitorVouchers(parseInt(id));
+      const exhibitor = await getExhibitor(org, parseInt(id));
+      const vouchers = await getExhibitorVouchers(org, parseInt(id));
       const vouchersWithPositions = await Promise.all(
         vouchers.map(async (voucher: any) => {
           const isFree = (voucher.price_mode === "set" && parseFloat(voucher.value || "0") === 0)
@@ -669,7 +681,7 @@ export async function registerRoutes(
           const isPaid = !isFree;
           if (isPaid && voucher.redeemed > 0) {
             try {
-              const positions = await getOrderPositionsByVoucher(voucher.id);
+              const positions = await getOrderPositionsByVoucher(org, voucher.id);
               return { ...voucher, order_positions: positions };
             } catch {
               return voucher;
