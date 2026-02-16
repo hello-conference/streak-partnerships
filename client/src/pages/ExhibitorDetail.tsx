@@ -118,19 +118,23 @@ function buildEmailBody(
 
   const contactEmail = org === "nl" ? "tickets@techorama.nl" : "tickets@techorama.be";
 
+  const redeemBaseUrl = `https://pretix.eu/${org === "nl" ? "techorama-nl" : "techorama-be"}/2026/redeem?voucher=`;
+
   const voucherLines = vouchers.map((v: any) => {
     const label = getItemBadgeLabel(v.item, itemsMap);
     const isFree = isVoucherFree(v);
     const maxUsages = v.max_usages || 0;
-    const redeemed = v.redeemed || 0;
-    const remaining = Math.max(0, maxUsages - redeemed);
-    const claimedInfo = redeemed > 0 ? ` - ${redeemed} already claimed, ${remaining} remaining` : "";
     const isKnight = label.toLowerCase() === "knight";
-    let priceInfo = isFree ? "Free" : formatPrice(v) || "Paid";
-    if (isKnight && !isFree) {
-      priceInfo = `${formatPrice(v) || "Paid"} - discounted fixed price for partners`;
+    let typeLabel: string;
+    if (isKnight) {
+      typeLabel = `Discounted Knight tickets (${formatPrice(v) || "€775.00"})`;
+    } else if (label.toLowerCase() === "partner") {
+      typeLabel = "Partner tickets (Free)";
+    } else {
+      typeLabel = isFree ? "2-day conference tickets (Free)" : `${label} tickets (${formatPrice(v) || "Paid"})`;
     }
-    return `  - ${label} (${priceInfo}): ${v.code} (${maxUsages} ticket${maxUsages !== 1 ? "s" : ""}${claimedInfo})`;
+    const redeemUrl = `${redeemBaseUrl}${v.code}`;
+    return `  - ${typeLabel}: ${redeemUrl} (${maxUsages} ticket${maxUsages !== 1 ? "s" : ""})`;
   }).join("\n");
 
   return `${greeting},
@@ -152,11 +156,12 @@ ${voucherLines}
 
 HOW TO CLAIM YOUR TICKETS
 1. Go to ${portalUrl}
-2. Enter your access code: ${accessCode}
-3. Navigate to the voucher section
-4. Use the voucher codes above to claim your tickets
+2. Enter your exhibitor access code to login to the Exhibitor Portal: ${accessCode}
+3. Navigate to the voucher section and click the Redeem link
 
-Each voucher code can be used the number of times indicated above. Simply share the relevant voucher code with the people in your team who need a ticket.
+Or use the direct redemption links above to claim tickets directly.
+
+Each voucher code can be used the number of times indicated above. Simply share the relevant voucher link with the people in your team who need a ticket.
 
 LEAD SCANNING INFO
 1. Install the Pretix Lead Scan App
