@@ -121,6 +121,19 @@ export function useCreateMissingExhibitors(org: PretixOrg) {
   });
 }
 
+export function useEmailedExhibitorIds(org: PretixOrg) {
+  return useQuery({
+    queryKey: ['/api/pretix/emailed-exhibitors', org],
+    staleTime: 30000,
+    queryFn: async () => {
+      const url = buildUrl(api.pretix.getEmailedExhibitorIds.path, { org });
+      const res = await fetch(url, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch emailed exhibitor IDs");
+      return res.json() as Promise<string[]>;
+    },
+  });
+}
+
 export function useEmailLogs(org: PretixOrg, exhibitorId: number | null) {
   return useQuery({
     queryKey: ['/api/pretix/email-logs', org, exhibitorId],

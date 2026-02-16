@@ -697,6 +697,17 @@ export async function registerRoutes(
     }
   });
 
+  app.get(api.pretix.getEmailedExhibitorIds.path, isAuthenticated, isDomainAllowed, async (req: any, res) => {
+    try {
+      const org = parseOrg(req);
+      const ids = await storage.getEmailedExhibitorIds(org);
+      res.json(ids);
+    } catch (error: any) {
+      console.error(error);
+      res.status(500).json({ message: error.message || "Failed to fetch emailed exhibitor IDs" });
+    }
+  });
+
   app.get(api.pretix.getEmailLogs.path, isAuthenticated, isDomainAllowed, async (req: any, res) => {
     try {
       const org = parseOrg(req);

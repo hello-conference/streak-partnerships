@@ -3,12 +3,12 @@ import { StatusBadge } from "@/components/ui/StatusBadge";
 import { format } from "date-fns";
 import { Card } from "@/components/ui/card";
 import { motion } from "framer-motion";
-import { Calendar, ChevronDown, Mail, DollarSign, CheckCircle2, XCircle, Ticket, Loader2 } from "lucide-react";
+import { Calendar, ChevronDown, Mail, MailCheck, DollarSign, CheckCircle2, XCircle, Ticket, Loader2 } from "lucide-react";
 import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { buildUrl, api } from "@shared/routes";
-import { useExhibitors, useCreateExhibitor, useCreateMissingExhibitors, type PretixOrg } from "@/hooks/use-pretix";
+import { useExhibitors, useCreateExhibitor, useCreateMissingExhibitors, useEmailedExhibitorIds, type PretixOrg } from "@/hooks/use-pretix";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -41,6 +41,8 @@ export function BoxList({ boxes, pipeline, prevYearStats = {} }: BoxListProps) {
   });
 
   const { data: exhibitors, isLoading: exhibitorsLoading } = useExhibitors(org);
+  const { data: emailedExhibitorIds } = useEmailedExhibitorIds(org);
+  const emailedSet = new Set(emailedExhibitorIds || []);
   const createExhibitorMutation = useCreateExhibitor(org);
   const createMissingMutation = useCreateMissingExhibitors(org);
   const { toast } = useToast();
@@ -455,24 +457,29 @@ export function BoxList({ boxes, pipeline, prevYearStats = {} }: BoxListProps) {
                                     const freeMissing = ft > 0 && fc < ft;
                                     return (
                                       <div className="flex items-center justify-between gap-2 pt-1 border-t border-border/30">
-                                        <Link
-                                          href={`/pipelines/${pipeline.key}/exhibitors/${exhibitor.id}?level=${encodeURIComponent(partnership)}&org=${org}${(() => {
-                                            const contacts = (box as any).contacts || [];
-                                            if (contacts.length > 0) {
-                                              const c = contacts[0];
-                                              const params = new URLSearchParams();
-                                              if (c.name) params.set("contactName", c.name);
-                                              if (c.email) params.set("contactEmail", c.email);
-                                              return "&" + params.toString();
-                                            }
-                                            return "";
-                                          })()}`}
-                                          className="flex items-center gap-1.5 text-xs text-green-600 dark:text-green-400 hover:underline"
-                                          data-testid={`link-exhibitor-${box.key}`}
-                                        >
-                                          <Ticket className="w-3.5 h-3.5" />
-                                          Exhibitor Tickets
-                                        </Link>
+                                        <div className="flex items-center gap-1.5">
+                                          <Link
+                                            href={`/pipelines/${pipeline.key}/exhibitors/${exhibitor.id}?level=${encodeURIComponent(partnership)}&org=${org}${(() => {
+                                              const contacts = (box as any).contacts || [];
+                                              if (contacts.length > 0) {
+                                                const c = contacts[0];
+                                                const params = new URLSearchParams();
+                                                if (c.name) params.set("contactName", c.name);
+                                                if (c.email) params.set("contactEmail", c.email);
+                                                return "&" + params.toString();
+                                              }
+                                              return "";
+                                            })()}`}
+                                            className="flex items-center gap-1.5 text-xs text-green-600 dark:text-green-400 hover:underline"
+                                            data-testid={`link-exhibitor-${box.key}`}
+                                          >
+                                            <Ticket className="w-3.5 h-3.5" />
+                                            Exhibitor Tickets
+                                          </Link>
+                                          {emailedSet.has(String(exhibitor.id)) && (
+                                            <MailCheck className="w-3.5 h-3.5 text-green-600 dark:text-green-400" data-testid={`icon-email-sent-${box.key}`} />
+                                          )}
+                                        </div>
                                         <div className="flex items-center gap-2">
                                           {ft > 0 && (
                                             <span className={`text-xs ${freeMissing ? "text-amber-600 dark:text-amber-400" : "text-green-600 dark:text-green-400"}`} data-testid={`text-free-tickets-${box.key}`}>

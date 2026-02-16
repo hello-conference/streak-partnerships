@@ -107,6 +107,11 @@ export const api = {
       path: '/api/pretix/:org/ticket-summary',
       responses: { 200: z.any(), 500: errorSchemas.internal },
     },
+    getEmailedExhibitorIds: {
+      method: 'GET' as const,
+      path: '/api/pretix/:org/emailed-exhibitors',
+      responses: { 200: z.array(z.string()), 500: errorSchemas.internal },
+    },
     getEmailLogs: {
       method: 'GET' as const,
       path: '/api/pretix/:org/exhibitors/:id/email-logs',

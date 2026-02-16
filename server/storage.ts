@@ -8,6 +8,7 @@ export interface IStorage {
   upsertUser(user: UpsertUser): Promise<User>;
   createEmailLog(log: InsertEmailLog): Promise<EmailLog>;
   getEmailLogsByExhibitor(org: string, exhibitorId: string): Promise<EmailLog[]>;
+  getEmailedExhibitorIds(org: string): Promise<string[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -37,6 +38,13 @@ export class DatabaseStorage implements IStorage {
     return db.select().from(emailLogs)
       .where(and(eq(emailLogs.org, org), eq(emailLogs.exhibitorId, exhibitorId)))
       .orderBy(desc(emailLogs.sentAt));
+  }
+
+  async getEmailedExhibitorIds(org: string): Promise<string[]> {
+    const rows = await db.selectDistinct({ exhibitorId: emailLogs.exhibitorId })
+      .from(emailLogs)
+      .where(eq(emailLogs.org, org));
+    return rows.map(r => r.exhibitorId);
   }
 }
 
